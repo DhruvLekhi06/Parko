@@ -84,7 +84,7 @@ export function PaymentSheet({ open, session, amount, onClose, onPaid, toast }) 
           <div className="receipt-check">
             <Icon name="check" size={30} />
           </div>
-          <h2 className="receipt-title">Paid. Drive safe.</h2>
+          <h2 className="receipt-title">{(paid?.fee ?? amount) > 0 ? 'Paid. Drive safe.' : 'You are out. Drive safe.'}</h2>
           <div className="receipt-sub">Receipt {result?.receiptNo}</div>
           <div className="receipt-rows">
             <div className="receipt-row">
@@ -99,10 +99,12 @@ export function PaymentSheet({ open, session, amount, onClose, onPaid, toast }) 
               <span>Duration</span>
               <span>{durationMin != null ? fmtMinutes(durationMin) : ''}</span>
             </div>
-            <div className="receipt-row">
-              <span>Paid via</span>
-              <span>{methodLabel}</span>
-            </div>
+            {(paid?.fee ?? amount) > 0 ? (
+              <div className="receipt-row">
+                <span>Paid via</span>
+                <span>{methodLabel}</span>
+              </div>
+            ) : null}
             <div className="receipt-row is-total">
               <span>Total</span>
               <span>{rupees(paid?.fee ?? amount)}</span>

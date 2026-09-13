@@ -22,7 +22,7 @@ export default function MyCar() {
   }, [refreshActive]);
 
   useEffect(() => {
-    if (!session) return undefined;
+    if (!session || payOpen) return undefined;
     const tick = async () => {
       try {
         const d = await api.activeSession();
@@ -39,7 +39,7 @@ export default function MyCar() {
     };
     const id = window.setInterval(tick, 30000);
     return () => window.clearInterval(id);
-  }, [session?.id, setSession, setServerFee]);
+  }, [session?.id, payOpen, setSession, setServerFee]);
 
   const cancel = async () => {
     if (!reservation) return;

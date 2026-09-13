@@ -31,6 +31,8 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - Chrome MCP cannot resize a maximised window. For phone-width checks serve an iframe harness (390x844 iframes to localhost:5173) from the scratchpad with `python3 -m http.server`.
 - An SVG `<mask>` inside a CSS-transformed `<g>` renders nothing in Chrome; the route draw-in is a rAF partial polyline instead.
 - Simulation flips about 30 slots/min across all venues; set `SIM_INTERVAL_MS=1000` for a livelier demo.
+- My Car pauses its 30 s session poll while the payment sheet is open, otherwise the poll can null the session and unmount the receipt mid-flow.
+- Chrome MCP drops the first click after a `navigate` until a screenshot refreshes its coordinate frame. Screenshot first, then click. Not an app bug (verified with a document click logger).
 - First-launch flag is `localStorage['spoton.welcomed']`; clear it to see the welcome screen again.
 - Seeded demo user is "Demo Driver / KA 01 AB 1234"; the welcome screen pre-fills it.
 - SSD writes from Bash need `dangerouslyDisableSandbox`.

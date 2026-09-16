@@ -5,6 +5,7 @@ import { useNow } from '../hooks/useNow.js';
 import { useDesktop } from '../hooks/useMedia.js';
 import { navigate, Link } from '../router.jsx';
 import { HoldCard } from '../components/HoldCard.jsx';
+import { VenueMap } from '../components/VenueMap.jsx';
 import { ExitSheet } from '../components/ExitSheet.jsx';
 import { Button, ScreenHeader } from '../components/Primitives.jsx';
 import { LogoMark } from '../components/Logo.jsx';
@@ -13,10 +14,28 @@ import { rupees, clock, duration, feeFor, maskTag } from '../lib/format.js';
 
 export default function MyCar() {
   const desktop = useDesktop();
-  const { session, setSession, hold, setHold, serverFee, setServerFee, refreshActive, user, setWalletBalance, toast, distanceToHoldM, arrived } = useApp();
+  const { session, setSession, hold, setHold, serverFee, setServerFee, refreshActive, user, setWalletBalance, toast, distanceToHoldM, arrived, position } = useApp();
   const now = useNow(1000, !!session);
   const [exitOpen, setExitOpen] = useState(false);
   const [busy, setBusy] = useState(null);
+  const [drive, setDrive] = useState(null);
+  const posKey = position.source === 'gps' ? `${Math.round(position.lat * 200)},${Math.round(position.lng * 200)}` : 'none';
+
+  useEffect(() => {
+    if (!hold) {
+      setDrive(null);
+      return undefined;
+    }
+    let alive = true;
+    api
+      .directions(hold.venueId, position.source === 'gps' ? position : undefined)
+      .then((d) => alive && setDrive(d))
+      .catch(() => alive && setDrive(null));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hold?.id, posKey]);
 
   useEffect(() => {
     refreshActive();
@@ -90,6 +109,21 @@ export default function MyCar() {
   };
 
   const head = <ScreenHeader title="My Car" back={false} className="is-plain" />;
+
+  const target = hold ? { id: hold.venueId, name: hold.venueName, lat: hold.venueLat, lng: hold.venueLng } : session?.venueLat != null ? { id: session.venueId, name: session.venueName, lat: session.venueLat, lng: session.venueLng } : null;
+  const here = position.source === 'gps' ? [position.lat, position.lng] : null;
+  const routePts = hold && drive?.coordinates?.length ? drive.coordinates : null;
+  const fitPts = target ? [...(routePts ? [routePts[0], routePts[routePts.length - 1]] : [[target.lat, target.lng]]), ...(here && hold ? [here] : [])] : [];
+  const mapEl = target ? (
+    <VenueMap
+      center={{ lat: target.lat, lng: target.lng }}
+      zoom={14}
+      venues={[{ ...target, level: 'open', free: hold ? hold.slotCode : session?.slotCode }]}
+      user={here ? { lat: here[0], lng: here[1] } : null}
+      route={routePts}
+      fit={{ points: fitPts, key: `${target.id}-${routePts ? 'r' : 'n'}-${fitPts.length}`, maxZoom: 15 }}
+    />
+  ) : null;
 
   let body;
   if (session) {
@@ -174,6 +208,13 @@ export default function MyCar() {
   } else if (hold) {
     body = (
       <div className="screen-inner screen-enter">
+        {!desktop && mapEl ? <div className="carmap">{mapEl}</div> : null}
+        {drive ? (
+          <div className="drivebar">
+            <span className="drivebar-v num">{Math.max(1, Math.round(drive.seconds / 60))} min</span>
+            <span className="drivebar-k">{(drive.metres / 1000).toFixed(1)} km by road{drive.source === 'estimate' ? ', estimated' : ''}</span>
+          </div>
+        ) : null}
         <HoldCard hold={hold} showRoute={false} onCancel={cancel} onArrived={parked} onExtend={extend} onOpenFloor={() => navigate(`/floor/${encodeURIComponent(hold.floorId)}`)} busy={busy} distanceM={distanceToHoldM} arrived={arrived} />
         <p className="feenote">{arrived ? 'You have arrived. Park in your spot, then tap "I\'ve parked" to start the timer.' : 'Drive over, show the code at the gate, park in your spot, then tap "I\'ve parked".'}</p>
       </div>
@@ -195,6 +236,17 @@ export default function MyCar() {
     );
   }
 
+  if (desktop && mapEl) {
+    return (
+      <div className="split">
+        <aside className="panel">
+          {head}
+          {body}
+        </aside>
+        <div className="stage">{mapEl}</div>
+      </div>
+    );
+  }
   return (
     <div className={`screen ${desktop ? 'is-narrow' : ''}`}>
       {head}

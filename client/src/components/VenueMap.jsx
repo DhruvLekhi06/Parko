@@ -24,7 +24,7 @@ function pinKey(v, selected) {
   return `${v.level}|${v.level === 'full' ? 'F' : v.free}|${selected ? 1 : 0}`;
 }
 
-export function VenueMap({ center, zoom = 12, venues = [], selectedId, onSelect, user, inset = { top: 0, bottom: 0 }, showZoom = false, className = '', focus }) {
+export function VenueMap({ center, zoom = 12, venues = [], selectedId, onSelect, user, inset = { top: 0, bottom: 0 }, showZoom = false, className = '', focus, fit, route }) {
   const elRef = useRef(null);
   const mapRef = useRef(null);
   const markers = useRef(new Map());
@@ -34,6 +34,8 @@ export function VenueMap({ center, zoom = 12, venues = [], selectedId, onSelect,
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const pendingFocus = useRef(null);
+  const pendingFit = useRef(null);
+  const routeRef = useRef(null);
 
   useEffect(() => {
     const map = L.map(elRef.current, { zoomControl: false, attributionControl: false, zoomSnap: 0.5 });
@@ -49,6 +51,7 @@ export function VenueMap({ center, zoom = 12, venues = [], selectedId, onSelect,
     const ro = new ResizeObserver(() => {
       map.invalidateSize({ animate: false });
       if (pendingFocus.current && applyFocus(map, pendingFocus.current)) pendingFocus.current = null;
+      if (pendingFit.current && applyFit(map, pendingFit.current)) pendingFit.current = null;
     });
     ro.observe(elRef.current);
     return () => {
@@ -137,6 +140,36 @@ export function VenueMap({ center, zoom = 12, venues = [], selectedId, onSelect,
     if (!map || !focus) return;
     if (!applyFocus(map, focus)) pendingFocus.current = focus;
   }, [focus, applyFocus]);
+
+  const applyFit = useCallback((map, f) => {
+    if (!map || !f?.points?.length) return true;
+    const size = map.getSize();
+    if (!size.x || !size.y) return false;
+    const { top = 0, bottom = 0 } = insetRef.current;
+    const pad = f.padding ?? 48;
+    map.flyToBounds(L.latLngBounds(f.points), { paddingTopLeft: [pad, top + pad], paddingBottomRight: [pad, bottom + pad], maxZoom: f.maxZoom || 15, duration: 0.6 });
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !fit) return;
+    if (!applyFit(map, fit)) pendingFit.current = fit;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit?.key, applyFit]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    routeRef.current?.forEach((l) => l.remove());
+    routeRef.current = null;
+    if (!route?.length) return;
+    const under = L.polyline(route, { color: '#22d48a', weight: 14, opacity: 0.16, lineCap: 'round', lineJoin: 'round', interactive: false });
+    const main = L.polyline(route, { color: '#22d48a', weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round', interactive: false });
+    under.addTo(map);
+    main.addTo(map);
+    routeRef.current = [under, main];
+  }, [route]);
 
   const zoomBy = (d) => mapRef.current?.setZoom(mapRef.current.getZoom() + d);
   const recenter = () => {

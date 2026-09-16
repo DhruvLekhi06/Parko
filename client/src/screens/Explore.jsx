@@ -76,6 +76,7 @@ export default function Explore() {
   const [selected, setSelected] = useState(null);
   const [snap, setSnap] = useState('half');
   const [focus, setFocus] = useState(null);
+  const [fit, setFit] = useState(null);
   const [bannerGone, setBannerGone] = useState(false);
   const [reload, setReload] = useState(0);
   const dq = useDebounced(q.trim(), 250);
@@ -100,10 +101,14 @@ export default function Explore() {
     };
   }, [position.lat, position.lng, type, ev, acc, dq, reload]);
 
+  const firstId = venues?.[0]?.id || null;
   useEffect(() => {
-    if (position.source === 'gps') setFocus({ lat: position.lat, lng: position.lng, zoom: 13, key: 'gps' });
+    if (!venues?.length || dq) return;
+    const pts = venues.slice(0, 4).map((v) => [v.lat, v.lng]);
+    if (position.source === 'gps') pts.push([position.lat, position.lng]);
+    setFit({ points: pts, key: `${position.source}-${firstId}-${city}`, maxZoom: 14 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [position.source]);
+  }, [firstId, position.source, city, dq]);
 
   useLiveEvent((t, d) => {
     if (t !== 'venue') return;
@@ -214,7 +219,7 @@ export default function Explore() {
     </ul>
   );
 
-  const map = <VenueMap center={position} venues={venues || []} selectedId={selected} onSelect={onSelectPin} user={position.source === 'gps' ? { lat: position.lat, lng: position.lng } : null} inset={inset} showZoom={desktop} focus={focus} />;
+  const map = <VenueMap center={position} venues={venues || []} selectedId={selected} onSelect={onSelectPin} user={position.source === 'gps' ? { lat: position.lat, lng: position.lng } : null} inset={inset} showZoom={desktop} focus={focus} fit={fit} />;
 
   if (desktop) {
     return (

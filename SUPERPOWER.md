@@ -23,6 +23,10 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - `client/` React app
 
 ## Decisions (newest on top)
+- 2026-09-16: UI direction = dark, map-first (Uber/Ola feel), glanceable, rebuilt directly on the live app (Dhruv: "not happy with the UI", picked dark map-first, rebuild directly). Tokens in `:root` are now dark; surfaces over the map are glass (`--glass` + backdrop blur); primary buttons are green with dark text (`--on-green`).
+- 2026-09-16: Map tiles = standard OSM tiles with a CSS invert/hue-rotate filter (`.tiles-dark`). CARTO dark basemaps now watermark "API KEY REQUIRED" without a key, so they were dropped.
+- 2026-09-16: Explore map fits user + nearest 4 venues (`fit` prop on VenueMap); My Car shows the OSRM drive route (`route` prop) with a phone-size map above the ticket and the full stage on desktop.
+- 2026-09-16: Phase 2 client: device id in localStorage (`spoton.device`), holds replace reservations, FASTag wallet + vehicles in Profile, ExitSheet auto-debit with top-up-and-retry on 402, WalletSheet, welcome collects plate + FASTag.
 - 2026-09-16: Phase 1 server port done: Postgres schema (users, vehicles, venues, floors, slots, holds, sessions, transactions, availability_history, receipt_seq), 106 venues in 6 cities (Bengaluru 60, Mumbai, Delhi NCR, Hyderabad, Chennai, Pune), holds replace reservations (`/api/holds`, `/api/reservations` kept as alias), `/api/vehicles`, `/api/wallet`, `/api/venues/:id/directions`, history backfill on boot. Verified with scratchpad smoke test (22 checks).
 - 2026-09-13: no more specialist agents on this project after the initial server+client build; Claude edits directly (Dhruv).
 - 2026-09-13: slot count is 5120 (table rows read as floors x slots per floor). Fine for the demo.
@@ -50,5 +54,6 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - node:sqlite prints an ExperimentalWarning on Node 22; harmless.
 
 ## Current state
+- 2026-09-16: v0.2 running locally on Postgres: launch flow (hold ₹20 by venue or slot → drive with route → I've parked → exit auto-debit → receipt), profile with wallet/vehicles/FASTag, dark map-first UI. Verified in Chrome desktop + phone frames. Next: Phase 3 (realistic floor plan + 2.5D view, Google Maps provider when key exists), then hosting (Dhruv to create Supabase/Railway/Vercel projects).
 - 2026-09-13: v0.1 working model DONE and verified in Chrome (desktop + phone frame): explore map/list with live SSE counts, venue detail with sparkline, floor plan, hold slot + animated route + gate code, I've parked, My Car timer/fee, find my car (reversed route), pay & exit (UPI/card/cash) + receipt, profile + history, PWA install tags, first-launch welcome. `npm run dev` then http://localhost:5173 (LAN: http://<mac-ip>:5173 for the phone).
 - Next: Dhruv reviews on device and lists iteration requests; then the report (format TBD).

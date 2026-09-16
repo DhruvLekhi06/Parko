@@ -3713,3 +3713,41 @@ button:focus:not(:focus-visible) {
   white-space: normal;
 }
 
+/* My Car drive map */
+.carmap {
+  position: relative;
+  height: 240px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.carmap .vmap {
+  position: absolute;
+  inset: 0;
+}
+.drivebar {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 4px 10px;
+}
+.drivebar-v {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--green);
+}
+.drivebar-k {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.rescard-actions {
+  flex-wrap: wrap;
+}
+.rescard-actions .btn-primary {
+  flex: 1 1 100%;
+  order: 2;
+}
+

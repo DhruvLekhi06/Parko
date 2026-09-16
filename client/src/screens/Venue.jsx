@@ -191,18 +191,20 @@ function Body({ v, alts, onHold, holdBusy, hold, session }) {
         </div>
       ) : full ? null : (
         <div className="venue-cta is-hold">
-          <Button variant="primary" size="lg" block icon={holdingHere ? 'car' : 'ticket'} loading={holdBusy} onClick={holdingHere ? () => navigate('/car') : onHold}>
-            {holdingHere ? `Holding ${hold.slotCode}, open My Car` : hold ? `Switch my hold here, ${rupees(v.holdFee)}` : `Hold a spot, ${rupees(v.holdFee)}`}
-          </Button>
+          <div className="cta-row">
+            <Button variant="primary" size="lg" icon={holdingHere ? 'car' : 'ticket'} loading={holdBusy} onClick={holdingHere ? () => navigate('/car') : onHold}>
+              {holdingHere ? 'Open My Car' : hold ? 'Switch reservation' : 'Reserve parking'}
+            </Button>
+            <Button variant="secondary" size="lg" icon="map" onClick={() => navigate(`/floor/${encodeURIComponent((bestFloor || floors[0]).id)}`)} disabled={!floors.length}>
+              Find parking
+            </Button>
+          </div>
           <div className="holdcta-sub">
-            {holdingHere ? `Held until ${clock(hold.expiresAt)}. Gate code ${hold.code}.` : `Held until ${clock(holdUntil)}. ${rupees(v.holdFee)} credited at exit, full refund within 5 min.`}
+            {holdingHere
+              ? `Holding ${hold.slotCode} until ${clock(hold.expiresAt)}. Gate code ${hold.code}.`
+              : `Reserve holds the best free spot for ${rupees(v.holdFee)} until ${clock(holdUntil)}, credited at exit. Find parking lets you pick the spot yourself.`}
           </div>
           <div className="holdcta-alt">
-            {bestFloor ? (
-              <button type="button" className="linkbtn" onClick={() => navigate(`/floor/${encodeURIComponent(bestFloor.id)}`)}>
-                Choose my own spot
-              </button>
-            ) : null}
             <a className="linkbtn" href={directions} target="_blank" rel="noopener noreferrer">
               Directions
             </a>

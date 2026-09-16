@@ -3751,3 +3751,13 @@ button:focus:not(:focus-visible) {
   order: 2;
 }
 
+.venue-cta.is-hold .cta-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 10px;
+}
+.venue-cta.is-hold .cta-row .btn {
+  min-width: 0;
+  padding-inline: 12px;
+}
+

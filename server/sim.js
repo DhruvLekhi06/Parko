@@ -1,7 +1,8 @@
-import { all, get, run } from './db.js';
+import { many, one } from './db.js';
 import { istHour } from './util.js';
 import { targetOccupancy } from './demand.js';
-import { setSlotStatus, expireReservations } from './state.js';
+import { setSlotStatus, expireHolds } from './state.js';
+import { sampleHistory } from './history.js';
 
 const TICK_MS = Number(process.env.SIM_INTERVAL_MS) || 4000;
 const spikes = new Map();
@@ -20,11 +21,12 @@ function stadiumSpike(venueId) {
   return false;
 }
 
-export function tick() {
-  const venues = all(`select v.id, v.type, count(*) as total, sum(s.status = 'occupied') as occupied
-    from venues v join floors f on f.venue_id = v.id join slots s on s.floor_id = f.id group by v.id`);
+export async function tick() {
+  const venues = await many(`select v.id, v.type, count(*)::int as total, count(*) filter (where s.status = 'occupied')::int as occupied
+    from venues v join floors f on f.venue_id = v.id join slots s on s.floor_id = f.id group by v.id, v.type`);
+  if (!venues.length) return;
   const hour = istHour();
-  const flips = 1 + Math.floor(Math.random() * 3);
+  const flips = 2 + Math.floor(Math.random() * 4);
   for (let i = 0; i < flips; i++) {
     const v = pickVenue(venues);
     const target = targetOccupancy(v.type, hour, v.type === 'stadium' && stadiumSpike(v.id));
@@ -32,25 +34,27 @@ export function tick() {
     const pOccupy = Math.min(0.9, Math.max(0.1, 0.5 + (target - occ) * 4));
     const toOccupied = Math.random() < pOccupy;
     const slot = toOccupied
-      ? get(`select s.id from slots s join floors f on f.id = s.floor_id where f.venue_id = ? and s.status = 'free' order by random() limit 1`, v.id)
-      : get(`select s.id from slots s join floors f on f.id = s.floor_id where f.venue_id = ? and s.status = 'occupied'
-          and s.id not in (select slot_id from sessions where ended_at is null) order by random() limit 1`, v.id);
+      ? await one(`select s.id from slots s join floors f on f.id = s.floor_id where f.venue_id = $1 and s.status = 'free' order by random() limit 1`, [v.id])
+      : await one(`select s.id from slots s join floors f on f.id = s.floor_id where f.venue_id = $1 and s.status = 'occupied'
+          and not exists (select 1 from sessions p where p.slot_id = s.id and p.ended_at is null) order by random() limit 1`, [v.id]);
     if (!slot) continue;
-    setSlotStatus(slot.id, toOccupied ? 'occupied' : 'free');
+    await setSlotStatus(slot.id, toOccupied ? 'occupied' : 'free');
     v.occupied += toOccupied ? 1 : -1;
   }
 }
 
-export function sampleHistory() {
-  const ts = new Date(Math.floor(Date.now() / 60000) * 60000).toISOString();
-  const rows = all(`select v.id, sum(s.status = 'free') as free from venues v join floors f on f.venue_id = v.id join slots s on s.floor_id = f.id group by v.id`);
-  for (const r of rows) run(`insert or replace into availability_history (venue_id, ts, free) values (?, ?, ?)`, r.id, ts, r.free);
-  run(`delete from availability_history where ts < ?`, new Date(Date.now() - 24 * 3600000).toISOString());
+function guarded(fn, label) {
+  let busy = false;
+  return async () => {
+    if (busy) return;
+    busy = true;
+    try { await fn(); } catch (e) { console.error(`${label} failed:`, e.message); } finally { busy = false; }
+  };
 }
 
 export function startSimulation() {
-  expireReservations();
-  setInterval(tick, TICK_MS);
-  setInterval(expireReservations, 5000);
-  setInterval(sampleHistory, 60000);
+  guarded(expireHolds, 'expiry')();
+  setInterval(guarded(tick, 'sim'), TICK_MS);
+  setInterval(guarded(expireHolds, 'expiry'), 5000);
+  setInterval(guarded(sampleHistory, 'history'), 60000);
 }

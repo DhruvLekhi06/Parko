@@ -1,13 +1,25 @@
-import { all, get } from './db.js';
+import { many } from './db.js';
 import { parseJson, istMinutes, haversineM } from './util.js';
 
-const FLOOR_COUNTS = `select f.id, f.name, f.level, f.venue_id, count(*) as total, sum(s.status = 'free') as free,
-  sum(s.status = 'free' and s.type = 'ev') as freeEv, sum(s.status = 'free' and s.type = 'accessible') as freeAccessible
+const FLOOR_COUNTS = `select f.id, f.name, f.level, f.venue_id, count(*)::int as total,
+  count(*) filter (where s.status = 'free')::int as free,
+  count(*) filter (where s.status = 'free' and s.type = 'ev')::int as free_ev,
+  count(*) filter (where s.status = 'free' and s.type = 'accessible')::int as free_accessible
   from floors f join slots s on s.floor_id = f.id`;
 
-export function floorCounts(venueId) {
-  const rows = venueId ? all(`${FLOOR_COUNTS} where f.venue_id = ? group by f.id order by f.level`, venueId) : all(`${FLOOR_COUNTS} group by f.id order by f.level`);
-  return rows.map((r) => ({ id: r.id, name: r.name, level: r.level, venueId: r.venue_id, total: r.total, free: r.free, freeEv: r.freeEv, freeAccessible: r.freeAccessible }));
+export async function floorCounts(venueId) {
+  const rows = venueId
+    ? await many(`${FLOOR_COUNTS} where f.venue_id = $1 group by f.id order by f.level`, [venueId])
+    : await many(`${FLOOR_COUNTS} group by f.id order by f.level`);
+  return rows.map((r) => ({ id: r.id, name: r.name, level: r.level, venueId: r.venue_id, total: r.total, free: r.free, freeEv: r.free_ev, freeAccessible: r.free_accessible }));
+}
+
+export async function trendBaseline(venueId) {
+  const cutoff = new Date(Date.now() - 30 * 60000).toISOString();
+  const rows = venueId
+    ? await many(`select venue_id, free from availability_history where venue_id = $1 and ts <= $2 order by ts desc limit 1`, [venueId, cutoff])
+    : await many(`select distinct on (venue_id) venue_id, free from availability_history where ts <= $1 order by venue_id, ts desc`, [cutoff]);
+  return new Map(rows.map((r) => [r.venue_id, r.free]));
 }
 
 export function levelOf(free, total) {
@@ -18,11 +30,9 @@ export function levelOf(free, total) {
   return 'open';
 }
 
-export function trendOf(venueId, freeNow, total) {
-  const then = get(`select free from availability_history where venue_id = ? and ts <= ? order by ts desc limit 1`,
-    venueId, new Date(Date.now() - 30 * 60000).toISOString());
-  if (!then) return 'steady';
-  const delta = freeNow - then.free;
+export function trendOf(thenFree, freeNow, total) {
+  if (thenFree == null) return 'steady';
+  const delta = freeNow - thenFree;
   if (Math.abs(delta) <= Math.max(2, total * 0.03)) return 'steady';
   return delta > 0 ? 'rising' : 'falling';
 }
@@ -37,27 +47,35 @@ export function isOpenNow(v) {
   return close > open ? now >= open && now < close : now >= open || now < close;
 }
 
-export function venueLive(venueId, floors = floorCounts(venueId)) {
+export function venueLive(venueId, floors, baseline) {
   const sum = (k) => floors.reduce((a, f) => a + f[k], 0);
   const total = sum('total');
   const free = sum('free');
   return {
     venueId, total, free, freeEv: sum('freeEv'), freeAccessible: sum('freeAccessible'),
     occupancy: total ? Math.round(((total - free) / total) * 100) / 100 : 0,
-    level: levelOf(free, total), trend: trendOf(venueId, free, total),
+    level: levelOf(free, total), trend: trendOf(baseline?.get(venueId), free, total),
     floors: floors.map(({ id, name, level, total, free, freeEv, freeAccessible }) => ({ id, name, level, total, free, freeEv, freeAccessible })),
   };
 }
 
-export function formatVenue(row, origin, floors) {
-  const live = venueLive(row.id, floors);
-  const distanceM = haversineM(origin.lat, origin.lng, row.lat, row.lng);
+export async function liveFor(venueId) {
+  const [floors, baseline] = await Promise.all([floorCounts(venueId), trendBaseline(venueId)]);
+  return venueLive(venueId, floors, baseline);
+}
+
+export function formatVenue(row, origin, floors, baseline, road) {
+  const live = venueLive(row.id, floors, baseline);
+  const straightM = haversineM(origin.lat, origin.lng, row.lat, row.lng);
+  const distanceM = road ? road.metres : straightM;
+  const etaMin = road ? Math.max(1, Math.round(road.seconds / 60)) : Math.max(1, Math.round((straightM * 1.3) / 400));
   const { venueId, ...rest } = live;
+  const rate = parseJson(row.rate, {});
   return {
-    id: row.id, name: row.name, type: row.type, address: row.address, lat: row.lat, lng: row.lng,
-    distanceM, etaMin: Math.max(1, Math.round(distanceM / 400)),
+    id: row.id, name: row.name, type: row.type, city: row.city, address: row.address, lat: row.lat, lng: row.lng,
+    distanceM, etaMin, etaSource: road ? 'road' : 'estimate',
     opens: row.opens, closes: row.closes, is24h: !!row.is24h, isOpen: isOpenNow(row),
-    amenities: parseJson(row.amenities, []), rate: parseJson(row.rate, {}), image: parseJson(row.image, {}),
+    amenities: parseJson(row.amenities, []), rate, holdFee: rate.holdFee ?? 0, image: parseJson(row.image, {}),
     ...rest,
   };
 }

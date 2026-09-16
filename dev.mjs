@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 
 const procs = [
-  spawn('node', ['--watch', 'server/index.js'], { stdio: 'inherit' }),
+  spawn('node', ['--env-file-if-exists=.env', '--watch', 'server/index.js'], { stdio: 'inherit' }),
   spawn('npx', ['vite', '--config', 'client/vite.config.js', '--host'], { stdio: 'inherit' }),
 ];
 

@@ -11,3 +11,11 @@ export function computeFee(rate, elapsedMinutes) {
   }
   return fee;
 }
+
+export function exitCharge(rate, elapsedMinutes, holdFee = 0) {
+  const parkingFee = computeFee(rate, elapsedMinutes);
+  const holdCredit = Math.min(holdFee, parkingFee);
+  return { parkingFee, holdCredit, due: parkingFee - holdCredit };
+}
+
+export const HOLD_REFUND_WINDOW_MIN = 5;

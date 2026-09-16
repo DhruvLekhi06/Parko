@@ -2,10 +2,9 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export const ROOT = path.join(import.meta.dirname, '..');
-export const DATA_DIR = path.join(import.meta.dirname, 'data');
-export const DB_PATH = path.join(DATA_DIR, 'parko.db');
 
 export const nowIso = () => new Date().toISOString();
+export const iso = (d) => (d instanceof Date ? d.toISOString() : d ? new Date(d).toISOString() : null);
 export const newId = (prefix) => `${prefix}_${randomUUID().replaceAll('-', '').slice(0, 10)}`;
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -16,6 +15,7 @@ export function gateCode() {
 }
 
 export const parseJson = (s, fallback) => {
+  if (s && typeof s === 'object') return s;
   try { return s ? JSON.parse(s) : fallback; } catch { return fallback; }
 };
 
@@ -54,10 +54,17 @@ export function hashStr(s) {
   return h >>> 0;
 }
 
+export const clampInt = (v, lo, hi, fallback) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(hi, Math.max(lo, Math.round(n)));
+};
+
 export class ApiError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, extra) {
     super(message);
     this.status = status;
     this.code = code;
+    this.extra = extra;
   }
 }

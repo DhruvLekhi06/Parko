@@ -3,10 +3,16 @@
 ## North star
 SpotOn ("Your spot, sorted."): a smart parking finder for malls and public places in Bengaluru. HCI course project by Dhruv, built to feel like a real startup launch (the evaluator is the first user). Working model hosted locally, iterated continuously. Final project report (15-section format) comes later, format to be decided by Dhruv.
 
-## Stack (decided 2026-09-13)
+## Launch direction (2026-09-16, Dhruv: "make it fully functional like we need to launch this product")
+- Hosting: Supabase Postgres + Railway API + Vercel client, all free tiers, NEW projects (not linked to AstroAura). Dhruv creates them and supplies DATABASE_URL / keys per session.
+- No login yet: device profile (UUID in localStorage sent as X-User-Id). Payments: FASTag-style auto-debit only (simulated wallet, ₹500 welcome credit, flat hold fee per venue type, parking fee auto-debited at exit, hold fee credited against the parking fee, full refund if cancelled within 5 min).
+- Maps: nicer tiles + OSRM road routing now; realistic floor plan + 2.5D view; Google Maps provider when a key exists.
+- "fast track linking" = FASTag ID linked per vehicle in the profile.
+
+## Stack (updated 2026-09-16)
 - Client: Vite 8 + React 19 + Leaflet 1.9 (OpenStreetMap tiles). Mobile-first, PWA-installable (manifest + apple meta + sw.js), desktop split layout.
-- Server: Express 5 + built-in `node:sqlite` (Node 22.19, no native deps) + Server-Sent Events for live slot updates. Backend simulates occupancy continuously.
-- Deps are ONLY: react, react-dom, leaflet, express, vite, @vitejs/plugin-react. Ask before adding any other.
+- Server: Express 5 + Postgres via `pg` (local Postgres 18 for dev: db `parko`, user `parko`; Supabase in prod via DATABASE_URL) + SSE. Simulation + expiry + history sampler run in-process. OSRM public demo for road ETA/directions (ROUTING_URL to swap). node:sqlite is gone.
+- Deps are ONLY: react, react-dom, leaflet, express, pg, vite, @vitejs/plugin-react. Ask before adding any other.
 - Root `npm run dev` starts both (dev.mjs). Client :5173 proxies /api to server :3001.
 - Code lives at `/Volumes/Dhruv's SSD/Parko`. GitHub: https://github.com/DhruvLekhi06/Parko (ask before every push).
 
@@ -17,6 +23,7 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - `client/` React app
 
 ## Decisions (newest on top)
+- 2026-09-16: Phase 1 server port done: Postgres schema (users, vehicles, venues, floors, slots, holds, sessions, transactions, availability_history, receipt_seq), 106 venues in 6 cities (Bengaluru 60, Mumbai, Delhi NCR, Hyderabad, Chennai, Pune), holds replace reservations (`/api/holds`, `/api/reservations` kept as alias), `/api/vehicles`, `/api/wallet`, `/api/venues/:id/directions`, history backfill on boot. Verified with scratchpad smoke test (22 checks).
 - 2026-09-13: no more specialist agents on this project after the initial server+client build; Claude edits directly (Dhruv).
 - 2026-09-13: slot count is 5120 (table rows read as floors x slots per floor). Fine for the demo.
 - 2026-09-13: `trend` = direction of the FREE count over 30 min (rising = opening up).
@@ -27,6 +34,9 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - 2026-09-13: SQLite via node:sqlite instead of better-sqlite3 to avoid a native build; SSE instead of ws to avoid a dep.
 
 ## Gotchas
+- History backfill: seeded 24h history expires when the server is off for a day; `backfillHistory()` on boot refills any venue with sparse history so sparklines never show "No history yet".
+- `db.js` uses AsyncLocalStorage so `tx(fn)` binds one client for every query inside fn; `notifyVenue` deliberately escapes the tx via setTimeout so SSE reads use the pool.
+- OSRM demo server: 2.5 s timeout, 30 s circuit breaker, 120 s cache; venues fall back to etaSource "estimate".
 - Leaflet panes use z-index 200-700. Every map container needs its own stacking context (`.vmap { isolation: isolate }`) or the map paints over fixed overlays (welcome, modals). Bit us on the desktop split layout.
 - Chrome MCP cannot resize a maximised window. For phone-width checks serve an iframe harness (390x844 iframes to localhost:5173) from the scratchpad with `python3 -m http.server`.
 - An SVG `<mask>` inside a CSS-transformed `<g>` renders nothing in Chrome; the route draw-in is a rAF partial polyline instead.

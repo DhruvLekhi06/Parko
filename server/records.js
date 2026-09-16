@@ -1,24 +1,32 @@
-import { all, get } from './db.js';
-import { parseJson } from './util.js';
+import { many, one } from './db.js';
+import { iso, parseJson } from './util.js';
+import { HOLD_REFUND_WINDOW_MIN } from './fees.js';
 
-const RES_SQL = `select r.id, r.slot_id, r.user_id, r.status, r.created_at, r.expires_at, r.code,
-  s.code as slot_code, s.status as slot_status, f.id as floor_id, f.name as floor_name, v.id as venue_id, v.name as venue_name
-  from reservations r join slots s on s.id = r.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id`;
+const HOLD_SQL = `select h.*, s.code as slot_code, s.status as slot_status, f.id as floor_id, f.name as floor_name,
+  v.id as venue_id, v.name as venue_name, v.lat as venue_lat, v.lng as venue_lng, v.address as venue_address, ve.plate as plate
+  from holds h join slots s on s.id = h.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id
+  left join vehicles ve on ve.id = h.vehicle_id`;
 
-const SES_SQL = `select p.id, p.slot_id, p.user_id, p.started_at, p.ended_at, p.fee, p.paid, p.payment_method, p.receipt_no,
-  s.code as slot_code, f.id as floor_id, f.name as floor_name, v.id as venue_id, v.name as venue_name, v.rate
-  from sessions p join slots s on s.id = p.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id`;
+const SES_SQL = `select p.*, s.code as slot_code, f.id as floor_id, f.name as floor_name, v.id as venue_id, v.name as venue_name,
+  v.lat as venue_lat, v.lng as venue_lng, v.rate, ve.plate as plate, h.hold_fee as hold_fee
+  from sessions p join slots s on s.id = p.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id
+  left join vehicles ve on ve.id = p.vehicle_id left join holds h on h.id = p.hold_id`;
 
-export const getReservation = (id) => get(`${RES_SQL} where r.id = ?`, id);
-export const activeReservation = (userId) => get(`${RES_SQL} where r.user_id = ? and r.status = 'active' order by r.created_at desc limit 1`, userId);
-export const getSession = (id) => get(`${SES_SQL} where p.id = ?`, id);
-export const activeSession = (userId) => get(`${SES_SQL} where p.user_id = ? and p.ended_at is null order by p.started_at desc limit 1`, userId);
-export const userSessions = (userId) => all(`${SES_SQL} where p.user_id = ? order by p.started_at desc`, userId);
+export const getHold = (id) => one(`${HOLD_SQL} where h.id = $1`, [id]);
+export const activeHold = (userId) => one(`${HOLD_SQL} where h.user_id = $1 and h.status = 'active' order by h.created_at desc limit 1`, [userId]);
+export const getSession = (id) => one(`${SES_SQL} where p.id = $1`, [id]);
+export const activeSession = (userId) => one(`${SES_SQL} where p.user_id = $1 and p.ended_at is null order by p.started_at desc limit 1`, [userId]);
+export const userSessions = (userId) => many(`${SES_SQL} where p.user_id = $1 order by p.started_at desc limit 100`, [userId]);
 
-export function formatReservation(r) {
+export function formatHold(h) {
+  const createdAt = new Date(h.created_at);
   return {
-    id: r.id, slotId: r.slot_id, slotCode: r.slot_code, floorId: r.floor_id, floorName: r.floor_name,
-    venueId: r.venue_id, venueName: r.venue_name, status: r.status, createdAt: r.created_at, expiresAt: r.expires_at, code: r.code,
+    id: h.id, slotId: h.slot_id, slotCode: h.slot_code, floorId: h.floor_id, floorName: h.floor_name,
+    venueId: h.venue_id, venueName: h.venue_name, venueLat: h.venue_lat, venueLng: h.venue_lng, venueAddress: h.venue_address,
+    vehicleId: h.vehicle_id, plate: h.plate || '', status: h.status, createdAt: iso(createdAt), expiresAt: iso(h.expires_at),
+    etaMinutes: h.eta_minutes, holdFee: h.hold_fee, code: h.code,
+    refundableUntil: iso(new Date(createdAt.getTime() + HOLD_REFUND_WINDOW_MIN * 60000)),
+    origin: h.origin_lat != null ? { lat: h.origin_lat, lng: h.origin_lng } : null,
   };
 }
 
@@ -27,7 +35,9 @@ export const elapsedMinutes = (startedAt, endedAt) => Math.max(0, Math.floor((ne
 export function formatSession(p) {
   return {
     id: p.id, slotId: p.slot_id, slotCode: p.slot_code, floorId: p.floor_id, floorName: p.floor_name,
-    venueId: p.venue_id, venueName: p.venue_name, startedAt: p.started_at, endedAt: p.ended_at, fee: p.fee, paid: !!p.paid,
+    venueId: p.venue_id, venueName: p.venue_name, venueLat: p.venue_lat, venueLng: p.venue_lng,
+    vehicleId: p.vehicle_id, plate: p.plate || '', holdId: p.hold_id, holdFee: p.hold_fee ?? 0,
+    startedAt: iso(p.started_at), endedAt: iso(p.ended_at), fee: p.fee, holdCredit: p.hold_credit, paid: !!p.paid,
     paymentMethod: p.payment_method, receiptNo: p.receipt_no, rate: parseJson(p.rate, {}), durationMinutes: elapsedMinutes(p.started_at, p.ended_at),
   };
 }

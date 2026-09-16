@@ -40,6 +40,7 @@ export function VenueMap({ center, zoom = 12, venues = [], selectedId, onSelect,
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>',
+      className: 'tiles-dark',
     }).addTo(map);
     L.control.attribution({ position: 'topright', prefix: false }).addTo(map);
     map.setView([center.lat, center.lng], zoom);

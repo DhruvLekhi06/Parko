@@ -9,7 +9,7 @@ import { BottomSheet } from '../components/BottomSheet.jsx';
 import { Icon, TYPE_ICON } from '../components/Icons.jsx';
 import { Brand } from '../components/Nav.jsx';
 import { Chip, Count, FillBar, Skeleton, EmptyState, ErrorState, Button, IconButton } from '../components/Primitives.jsx';
-import { rupees, distance, minutes, levelInfo, TYPE_LABELS } from '../lib/format.js';
+import { distance, minutes, levelInfo, TYPE_LABELS } from '../lib/format.js';
 
 const TYPES = ['all', 'mall', 'hospital', 'metro', 'rail', 'stadium', 'airport', 'public'];
 const TOP_INSET = 124;
@@ -18,6 +18,7 @@ function VenueItem({ v, selected, onOpen, itemRef }) {
   const lvl = levelInfo(v.level);
   const closed = v.isOpen === false;
   const occ = v.total ? 1 - (v.free || 0) / v.total : v.occupancy || 0;
+  const full = v.level === 'full';
   return (
     <li>
       <button ref={itemRef} type="button" className={`vitem ${selected ? 'is-selected' : ''} ${closed ? 'is-closed' : ''}`} onClick={onOpen}>
@@ -27,24 +28,14 @@ function VenueItem({ v, selected, onOpen, itemRef }) {
         <span className="vitem-main">
           <span className="vitem-name">{v.name}</span>
           <span className="vitem-meta">
-            {distance(v.distanceM)}, {minutes(v.etaMin)} drive{closed ? ', closed now' : ''}
+            {minutes(v.etaMin)} drive, {distance(v.distanceM)}
+            {closed ? ', closed now' : ''}
           </span>
-          <span className="vitem-avail">
-            <span className={`tone-text-${lvl.tone}`}>
-              {v.level === 'full' ? (
-                'Full right now'
-              ) : (
-                <>
-                  <Count value={v.free} /> {v.free === 1 ? 'spot' : 'spots'} free
-                </>
-              )}
-            </span>
-            <FillBar value={occ} tone={lvl.tone} />
-          </span>
+          <FillBar value={occ} tone={lvl.tone} />
         </span>
         <span className="vitem-side">
-          <span className="vitem-rate num">{rupees(v.rate?.firstHour)}</span>
-          <span className="vitem-rate-sub">first hour</span>
+          <span className={`vitem-free num tone-text-${lvl.tone}`}>{full ? 'Full' : <Count value={v.free} />}</span>
+          <span className="vitem-free-sub">{full ? 'right now' : 'free'}</span>
         </span>
       </button>
     </li>
@@ -194,8 +185,8 @@ export default function Explore() {
   const header = (
     <div className="row-between">
       <div>
-        <div className="sheet-title">{venues ? `${venues.length} ${venues.length === 1 ? 'place' : 'places'} ${position.source === 'gps' ? 'near you' : 'nearby'}${city ? ` in ${city}` : ''}` : 'Finding spots'}</div>
-        <div className="sheet-sub">Closest first, live drive times. Counts update live.</div>
+        <div className="sheet-title">{city ? `Near you, ${city}` : 'Near you'}</div>
+        <div className="sheet-sub">{venues ? `${venues.length} places, live counts and drive times` : 'Finding spots'}</div>
       </div>
     </div>
   );

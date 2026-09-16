@@ -52,42 +52,42 @@ function Body({ v, alts, onHold, holdBusy, hold, session }) {
             {TYPE_LABELS[v.type] || v.type}
           </Pill>
           <Pill tone={v.isOpen ? 'green' : 'red'} dot>
-            {v.isOpen ? 'Open' : 'Closed'}
+            {v.isOpen ? hoursLabel(v) : 'Closed'}
           </Pill>
         </div>
         <h1 className="venue-name">{v.name}</h1>
-        <p className="venue-addr">{v.address}</p>
-        <div className="venue-facts">
-          <span>
-            <Icon name="clock" size={15} />
-            {hoursLabel(v)}
-          </span>
-          <span>
-            <Icon name="navigate" size={15} />
-            {distance(v.distanceM)}, {minutes(v.etaMin)} drive
-          </span>
-        </div>
+        <p className="venue-addr">
+          {v.address}
+          {v.city ? `, ${v.city}` : ''}
+        </p>
       </div>
 
-      <section className="avail" aria-label="Availability">
-        <div className="avail-top">
-          <div>
-            <div className="avail-big">
-              <span className="avail-num">
-                <Count value={v.free} />
-              </span>
-              <span className={`avail-trend tone-${trend.tone}`}>
-                <Icon name={trend.icon} size={16} />
-                {trend.label}
-              </span>
-            </div>
-            <div className="avail-sub">of {v.total} spots free right now</div>
+      <section className="stats" aria-label="Right now">
+        <div className="stat is-hero">
+          <div className="stat-k">Free now</div>
+          <div className={`stat-v num tone-text-${lvl.tone}`}>{full ? 'Full' : <Count value={v.free} />}</div>
+          <div className="stat-sub">
+            of {v.total}
+            <span className={`stat-trend tone-text-${trend.tone}`}>
+              <Icon name={trend.icon} size={13} />
+              {trend.label}
+            </span>
           </div>
-          <Pill tone={lvl.tone} className="avail-level">
-            {lvl.label}
-          </Pill>
         </div>
-        <FillBar value={occ} tone={lvl.tone} style={{ marginTop: 12 }} />
+        <div className="stat">
+          <div className="stat-k">Drive</div>
+          <div className="stat-v num">{minutes(v.etaMin)}</div>
+          <div className="stat-sub">{distance(v.distanceM)}</div>
+        </div>
+        <div className="stat">
+          <div className="stat-k">Hold</div>
+          <div className="stat-v num">{rupees(v.holdFee)}</div>
+          <div className="stat-sub">credited at exit</div>
+        </div>
+      </section>
+
+      <section className="avail is-compact" aria-label="Last 24 hours">
+        <FillBar value={occ} tone={lvl.tone} />
         <Sparkline points={v.history || []} total={v.total} tone={lvl.tone} />
         <div className="spark-axis" aria-hidden="true">
           <span>24h ago</span>
@@ -97,13 +97,13 @@ function Body({ v, alts, onHold, holdBusy, hold, session }) {
           {v.freeEv != null ? (
             <Pill tone="ev">
               <Icon name="bolt" size={13} />
-              {v.freeEv} EV free
+              {v.freeEv} EV
             </Pill>
           ) : null}
           {v.freeAccessible != null ? (
             <Pill tone="acc">
               <Icon name="accessible" size={13} />
-              {v.freeAccessible} accessible free
+              {v.freeAccessible} accessible
             </Pill>
           ) : null}
         </div>
@@ -141,10 +141,34 @@ function Body({ v, alts, onHold, holdBusy, hold, session }) {
         </div>
       ) : null}
 
-      {v.amenities?.length ? (
-        <section className="section" aria-label="Amenities">
-          <div className="section-title">Amenities</div>
-          <div className="amenities">
+      <section className="section" aria-label="Floors">
+        <div className="section-title">Floors</div>
+        <div className="floorchips">
+          {floors.map((f) => (
+            <button key={f.id} type="button" className={`floorchip ${!f.free ? 'is-full' : ''}`} onClick={() => navigate(`/floor/${encodeURIComponent(f.id)}`)}>
+              <span className="floorchip-name">{f.name}</span>
+              <span className="floorchip-free num">{f.free}</span>
+              <span className="floorchip-sub">{f.free ? 'free' : 'full'}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="section" aria-label="Good to know">
+        <div className="section-title">Good to know</div>
+        <div className="facts">
+          <span>
+            <Icon name="card" size={15} />
+            {rupees(v.rate?.firstHour)} first hour, then {rupees(v.rate?.perAdditionalHour)} an hour
+          </span>
+          <span>
+            <Icon name="clock" size={15} />
+            {v.rate?.freeMinutes ? `${v.rate.freeMinutes} min free, ` : ''}
+            {rupees(v.rate?.dailyCap)} daily cap
+          </span>
+        </div>
+        {v.amenities?.length ? (
+          <div className="amenities" style={{ marginTop: 10 }}>
             {v.amenities.map((a) => (
               <span key={a} className={`amenity ${a === 'ev' ? 'is-ev' : ''} ${a === 'accessible' ? 'is-acc' : ''}`}>
                 <Icon name={a === 'ev' ? 'bolt' : a === 'accessible' ? 'accessible' : 'check'} size={14} />
@@ -152,60 +176,7 @@ function Body({ v, alts, onHold, holdBusy, hold, session }) {
               </span>
             ))}
           </div>
-        </section>
-      ) : null}
-
-      <section className="section" aria-label="Rates">
-        <div className="section-title">Rates</div>
-        <div className="rates">
-          <div className="rate">
-            <div className="rate-v">{rupees(v.rate?.firstHour)}</div>
-            <div className="rate-k">first hour</div>
-          </div>
-          <div className="rate">
-            <div className="rate-v">{rupees(v.rate?.perAdditionalHour)}</div>
-            <div className="rate-k">each extra hour</div>
-          </div>
-          <div className="rate">
-            <div className="rate-v">{v.rate?.freeMinutes ? `${v.rate.freeMinutes} min` : 'None'}</div>
-            <div className="rate-k">free grace period</div>
-          </div>
-          <div className="rate">
-            <div className="rate-v">{rupees(v.rate?.dailyCap)}</div>
-            <div className="rate-k">daily cap</div>
-          </div>
-          <div className="rate is-hold">
-            <div className="rate-v">{rupees(v.holdFee)}</div>
-            <div className="rate-k">to hold a spot, credited at exit</div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section" aria-label="Floors">
-        <div className="section-title">Floors</div>
-        <div className="floors">
-          {floors.map((f) => {
-            const fFull = !f.free;
-            const fOcc = f.total ? 1 - (f.free || 0) / f.total : 0;
-            return (
-              <button key={f.id} type="button" className={`floor-row ${fFull ? 'is-full' : ''}`} onClick={() => navigate(`/floor/${encodeURIComponent(f.id)}`)}>
-                <span className="floor-badge">{f.name}</span>
-                <span className="floor-row-main">
-                  <span className="floor-row-free">{fFull ? 'Full' : `${f.free} of ${f.total} free`}</span>
-                  <span className="floor-row-sub">
-                    {f.freeEv != null ? <span>{f.freeEv} EV</span> : null}
-                    {f.freeAccessible != null ? <span>{f.freeAccessible} accessible</span> : null}
-                  </span>
-                  <FillBar value={fOcc} tone={fFull ? 'red' : fOcc > 0.9 ? 'red' : fOcc > 0.6 ? 'amber' : 'green'} />
-                </span>
-                <span className="floor-row-cta">
-                  View slots
-                  <Icon name="chevron" size={16} />
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        ) : null}
       </section>
 
       {session ? (
@@ -219,31 +190,24 @@ function Body({ v, alts, onHold, holdBusy, hold, session }) {
           </span>
         </div>
       ) : full ? null : (
-        <>
-          <section className="holdcta" aria-label="Hold a spot">
-            <div className="holdcta-title">{holdingHere ? `You're holding ${hold.slotCode} here` : `Hold a spot for ${rupees(v.holdFee)}`}</div>
-            <div className="holdcta-sub">
-              {holdingHere
-                ? `Held until ${clock(hold.expiresAt)}. Show ${hold.code} at the gate.`
-                : `You're ${minutes(v.etaMin)} away. We'll hold the best free spot until ${clock(holdUntil)} and credit the ${rupees(v.holdFee)} at exit. Full refund if you cancel within 5 min.`}
-            </div>
-          </section>
-          <div className="venue-cta is-hold">
-            <Button variant="primary" size="lg" block icon={holdingHere ? 'car' : 'ticket'} loading={holdBusy} onClick={holdingHere ? () => navigate('/car') : onHold}>
-              {holdingHere ? 'Open My Car' : hold ? `Switch my hold here, ${rupees(v.holdFee)}` : `Hold a spot, ${rupees(v.holdFee)}`}
-            </Button>
-            <div className="holdcta-alt">
-              {bestFloor ? (
-                <button type="button" className="linkbtn" onClick={() => navigate(`/floor/${encodeURIComponent(bestFloor.id)}`)}>
-                  Choose my own spot
-                </button>
-              ) : null}
-              <a className="linkbtn" href={directions} target="_blank" rel="noopener noreferrer">
-                Directions
-              </a>
-            </div>
+        <div className="venue-cta is-hold">
+          <Button variant="primary" size="lg" block icon={holdingHere ? 'car' : 'ticket'} loading={holdBusy} onClick={holdingHere ? () => navigate('/car') : onHold}>
+            {holdingHere ? `Holding ${hold.slotCode}, open My Car` : hold ? `Switch my hold here, ${rupees(v.holdFee)}` : `Hold a spot, ${rupees(v.holdFee)}`}
+          </Button>
+          <div className="holdcta-sub">
+            {holdingHere ? `Held until ${clock(hold.expiresAt)}. Gate code ${hold.code}.` : `Held until ${clock(holdUntil)}. ${rupees(v.holdFee)} credited at exit, full refund within 5 min.`}
           </div>
-        </>
+          <div className="holdcta-alt">
+            {bestFloor ? (
+              <button type="button" className="linkbtn" onClick={() => navigate(`/floor/${encodeURIComponent(bestFloor.id)}`)}>
+                Choose my own spot
+              </button>
+            ) : null}
+            <a className="linkbtn" href={directions} target="_blank" rel="noopener noreferrer">
+              Directions
+            </a>
+          </div>
+        </div>
       )}
     </div>
   );

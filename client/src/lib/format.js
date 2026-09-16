@@ -145,3 +145,22 @@ export function reverseSteps(steps = []) {
       .replace(/__SWAP__/g, 'Turn right')
   );
 }
+
+export function maskTag(id) {
+  const s = String(id || '');
+  return s.length > 4 ? `•••• ${s.slice(-4)}` : s;
+}
+
+export const VEHICLE_KINDS = { car: 'Car', suv: 'SUV', bike: 'Bike' };
+
+export const TXN_LABELS = {
+  topup: 'Top-up',
+  hold_fee: 'Hold fee',
+  parking_fee: 'Parking',
+  refund: 'Refund',
+};
+
+export function holdWindow(hold) {
+  if (!hold?.expiresAt) return '';
+  return `Held until ${clock(hold.expiresAt)}`;
+}

@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiUrl } from '../api.js';
+
+const EVENTS = ['slot', 'venue', 'hold', 'reservation'];
 
 export function useLiveEvents() {
   const [status, setStatus] = useState('connecting');
@@ -23,14 +26,12 @@ export function useLiveEvents() {
       });
     };
     try {
-      es = new EventSource('/api/events');
+      es = new EventSource(apiUrl('/api/events'));
     } catch {
       setStatus('closed');
       return undefined;
     }
-    es.addEventListener('slot', relay('slot'));
-    es.addEventListener('venue', relay('venue'));
-    es.addEventListener('reservation', relay('reservation'));
+    EVENTS.forEach((t) => es.addEventListener(t, relay(t)));
     es.onopen = () => alive && setStatus('open');
     es.onerror = () => alive && setStatus(es.readyState === EventSource.CLOSED ? 'closed' : 'reconnecting');
     return () => {

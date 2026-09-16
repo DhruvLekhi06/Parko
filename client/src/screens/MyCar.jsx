@@ -3,18 +3,19 @@ import { api } from '../api.js';
 import { useApp } from '../store.jsx';
 import { useNow } from '../hooks/useNow.js';
 import { useDesktop } from '../hooks/useMedia.js';
-import { navigate } from '../router.jsx';
-import { ReservationCard } from '../components/ReservationCard.jsx';
-import { PaymentSheet } from '../components/PaymentSheet.jsx';
-import { Button, EmptyState, ScreenHeader } from '../components/Primitives.jsx';
+import { navigate, Link } from '../router.jsx';
+import { HoldCard } from '../components/HoldCard.jsx';
+import { ExitSheet } from '../components/ExitSheet.jsx';
+import { Button, ScreenHeader } from '../components/Primitives.jsx';
 import { LogoMark } from '../components/Logo.jsx';
-import { rupees, clock, duration, feeFor, formatPlate } from '../lib/format.js';
+import { Icon } from '../components/Icons.jsx';
+import { rupees, clock, duration, feeFor, maskTag } from '../lib/format.js';
 
 export default function MyCar() {
   const desktop = useDesktop();
-  const { session, setSession, reservation, setReservation, serverFee, setServerFee, refreshActive, user, toast } = useApp();
+  const { session, setSession, hold, setHold, serverFee, setServerFee, refreshActive, user, setWalletBalance, toast, distanceToHoldM, arrived } = useApp();
   const now = useNow(1000, !!session);
-  const [payOpen, setPayOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function MyCar() {
   }, [refreshActive]);
 
   useEffect(() => {
-    if (!session || payOpen) return undefined;
+    if (!session || exitOpen) return undefined;
     const tick = async () => {
       try {
         const d = await api.activeSession();
@@ -31,7 +32,8 @@ export default function MyCar() {
           setServerFee(null);
         } else {
           setSession(d.session);
-          setServerFee({ feeNow: d.feeNow ?? 0, elapsedMinutes: d.elapsedMinutes ?? 0, at: Date.now() });
+          setServerFee({ feeNow: d.feeNow ?? 0, dueNow: d.dueNow ?? 0, holdCredit: d.holdCredit ?? 0, elapsedMinutes: d.elapsedMinutes ?? 0, at: Date.now() });
+          setWalletBalance(d.walletBalance);
         }
       } catch {
         /* next poll */
@@ -39,15 +41,16 @@ export default function MyCar() {
     };
     const id = window.setInterval(tick, 30000);
     return () => window.clearInterval(id);
-  }, [session?.id, payOpen, setSession, setServerFee]);
+  }, [session?.id, exitOpen, setSession, setServerFee, setWalletBalance]);
 
   const cancel = async () => {
-    if (!reservation) return;
+    if (!hold) return;
     setBusy('cancel');
     try {
-      await api.cancelReservation(reservation.id);
-      setReservation(null);
-      toast('Hold released.');
+      const r = await api.cancelHold(hold.id);
+      setHold(null);
+      setWalletBalance(r?.walletBalance);
+      toast(r?.refunded ? `Hold released. ${rupees(r.refunded)} refunded to your wallet.` : 'Hold released.');
     } catch (e) {
       toast(e.message, { kind: 'error' });
       refreshActive();
@@ -57,16 +60,30 @@ export default function MyCar() {
   };
 
   const parked = async () => {
-    if (!reservation) return;
+    if (!hold) return;
     setBusy('park');
     try {
-      const r = await api.startSession({ reservationId: reservation.id });
+      const r = await api.arrive(hold.id);
       setSession(r?.session ?? r);
-      setReservation(null);
-      toast(`Parked at ${reservation.slotCode}. Timer running.`, { kind: 'success' });
+      setHold(null);
+      toast(`Parked at ${hold.slotCode}. Timer running.`, { kind: 'success' });
     } catch (e) {
       toast(e.message, { kind: 'error' });
       refreshActive();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const extend = async () => {
+    if (!hold) return;
+    setBusy('extend');
+    try {
+      const r = await api.extendHold(hold.id, 15);
+      setHold(r?.hold ?? hold);
+      toast(`Held until ${clock(r?.hold?.expiresAt)}.`);
+    } catch (e) {
+      toast(e.message, { kind: 'error' });
     } finally {
       setBusy(null);
     }
@@ -81,7 +98,10 @@ export default function MyCar() {
     const elapsedMin = elapsedMs / 60000;
     const localFee = session.rate ? feeFor(elapsedMin, session.rate) : null;
     const fee = localFee != null ? Math.max(localFee, serverFee?.feeNow ?? 0) : (serverFee?.feeNow ?? 0);
+    const credit = Math.min(session.holdFee || 0, fee);
+    const due = Math.max(0, fee - credit);
     const graceLeft = session.rate?.freeMinutes ? Math.ceil(session.rate.freeMinutes - elapsedMin) : 0;
+    const tag = user?.defaultVehicle?.fastagId;
     body = (
       <div className="screen-inner screen-enter">
         <div className="carcard">
@@ -89,7 +109,7 @@ export default function MyCar() {
             {session.venueName}, floor {session.floorName}
           </div>
           <div className="carcard-slot">{session.slotCode}</div>
-          {user?.plate ? <div className="carcard-plate">{formatPlate(user.plate)}</div> : null}
+          {session.plate || user?.plate ? <div className="carcard-plate">{session.plate || user.plate}</div> : null}
           <div className="carcard-grid">
             <div>
               <div className="carcard-k">Parked at</div>
@@ -100,16 +120,16 @@ export default function MyCar() {
               <div className="carcard-v">{duration(elapsedMs)}</div>
             </div>
             <div>
-              <div className="carcard-k">Fee so far</div>
-              <div className="carcard-v is-fee">{rupees(fee)}</div>
+              <div className="carcard-k">To pay</div>
+              <div className="carcard-v is-fee">{rupees(due)}</div>
             </div>
           </div>
           <div className="carcard-actions">
             <Button variant="secondary" icon="walk" onClick={() => navigate(`/floor/${encodeURIComponent(session.floorId)}?find=1`)}>
               Find my car
             </Button>
-            <Button variant="primary" icon="card" onClick={() => setPayOpen(true)}>
-              Pay & exit
+            <Button variant="primary" icon="ticket" onClick={() => setExitOpen(true)}>
+              Exit
             </Button>
           </div>
         </div>
@@ -117,17 +137,33 @@ export default function MyCar() {
           {graceLeft > 0
             ? `Leave within ${graceLeft} min and it's free.`
             : session.rate
-              ? `${rupees(session.rate.firstHour)} for the first hour, then ${rupees(session.rate.perAdditionalHour)} an hour, capped at ${rupees(session.rate.dailyCap)} a day.`
+              ? `${rupees(session.rate.firstHour)} for the first hour, then ${rupees(session.rate.perAdditionalHour)} an hour, capped at ${rupees(session.rate.dailyCap)} a day.${credit ? ` Your ${rupees(credit)} hold fee is credited.` : ''}`
               : 'Fee updates every 30 seconds.'}
         </p>
-        <PaymentSheet
-          open={payOpen}
+        <div className="fastag-line">
+          <Icon name="ticket" size={18} />
+          <span>
+            {tag ? (
+              <>
+                Exit is automatic. The fee goes to FASTag {maskTag(tag)}, wallet {rupees(user?.walletBalance ?? 0)}.
+              </>
+            ) : (
+              <>
+                <Link to="/profile">Link your FASTag</Link> to drive out without stopping. Wallet {rupees(user?.walletBalance ?? 0)}.
+              </>
+            )}
+          </span>
+        </div>
+        <ExitSheet
+          open={exitOpen}
           session={session}
-          amount={fee}
+          quote={{ feeNow: fee, holdCredit: credit, dueNow: due }}
+          user={user}
           toast={toast}
-          onClose={() => setPayOpen(false)}
-          onPaid={() => {
-            setPayOpen(false);
+          onWallet={setWalletBalance}
+          onClose={() => setExitOpen(false)}
+          onExited={() => {
+            setExitOpen(false);
             setSession(null);
             setServerFee(null);
             navigate('/');
@@ -135,11 +171,11 @@ export default function MyCar() {
         />
       </div>
     );
-  } else if (reservation) {
+  } else if (hold) {
     body = (
       <div className="screen-inner screen-enter">
-        <ReservationCard reservation={reservation} showRoute={false} onCancel={cancel} onParked={parked} onOpenFloor={() => navigate(`/floor/${encodeURIComponent(reservation.floorId)}`)} busy={busy} />
-        <p className="feenote">Once you're in, tap "I've parked" to start the timer.</p>
+        <HoldCard hold={hold} showRoute={false} onCancel={cancel} onArrived={parked} onExtend={extend} onOpenFloor={() => navigate(`/floor/${encodeURIComponent(hold.floorId)}`)} busy={busy} distanceM={distanceToHoldM} arrived={arrived} />
+        <p className="feenote">{arrived ? 'You have arrived. Park in your spot, then tap "I\'ve parked" to start the timer.' : 'Drive over, show the code at the gate, park in your spot, then tap "I\'ve parked".'}</p>
       </div>
     );
   } else {

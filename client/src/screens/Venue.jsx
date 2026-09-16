@@ -7,7 +7,8 @@ import { VenueMap } from '../components/VenueMap.jsx';
 import { Sparkline } from '../components/Sparkline.jsx';
 import { Icon, TYPE_ICON } from '../components/Icons.jsx';
 import { Button, Count, ErrorState, FillBar, Pill, ScreenHeader, Skeleton } from '../components/Primitives.jsx';
-import { rupees, distance, minutes, levelInfo, TYPE_LABELS, AMENITY_LABELS, hoursLabel } from '../lib/format.js';
+import { WalletSheet } from '../components/WalletSheet.jsx';
+import { rupees, distance, minutes, levelInfo, TYPE_LABELS, AMENITY_LABELS, hoursLabel, clock } from '../lib/format.js';
 
 const TREND = {
   rising: { icon: 'trendUp', label: 'Opening up', tone: 'green' },
@@ -31,14 +32,16 @@ function VenueSkeleton() {
   );
 }
 
-function Body({ v, alts }) {
+function Body({ v, alts, onHold, holdBusy, hold, session }) {
   const lvl = levelInfo(v.level);
   const trend = TREND[v.trend] || TREND.steady;
   const floors = v.floors || [];
   const bestFloor = floors.reduce((a, f) => (!a || (f.free || 0) > (a.free || 0) ? f : a), null);
   const full = v.level === 'full' || (v.total && !v.free);
   const occ = v.total ? 1 - (v.free || 0) / v.total : v.occupancy || 0;
-  const directions = `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}`;
+  const directions = `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}&travelmode=driving`;
+  const holdUntil = new Date(Date.now() + ((v.etaMin || 0) + 15) * 60000).toISOString();
+  const holdingHere = hold && hold.venueId === v.id;
 
   return (
     <div className="screen-inner screen-enter">
@@ -171,6 +174,10 @@ function Body({ v, alts }) {
             <div className="rate-v">{rupees(v.rate?.dailyCap)}</div>
             <div className="rate-k">daily cap</div>
           </div>
+          <div className="rate is-hold">
+            <div className="rate-v">{rupees(v.holdFee)}</div>
+            <div className="rate-k">to hold a spot, credited at exit</div>
+          </div>
         </div>
       </section>
 
@@ -201,23 +208,53 @@ function Body({ v, alts }) {
         </div>
       </section>
 
-      <div className="venue-cta">
-        <Button variant="secondary" icon="navigate" onClick={() => window.open(directions, '_blank', 'noopener')}>
-          Directions
-        </Button>
-        {bestFloor && !full ? (
-          <Button variant="primary" icon="map" onClick={() => navigate(`/floor/${encodeURIComponent(bestFloor.id)}`)}>
-            Pick a spot
-          </Button>
-        ) : null}
-      </div>
+      {session ? (
+        <div className="hint" style={{ marginTop: 20 }}>
+          <Icon name="car" size={18} />
+          <span>
+            You're parked at {session.venueName}, {session.slotCode}.{' '}
+            <button type="button" className="linkbtn" onClick={() => navigate('/car')}>
+              Open My Car
+            </button>
+          </span>
+        </div>
+      ) : full ? null : (
+        <>
+          <section className="holdcta" aria-label="Hold a spot">
+            <div className="holdcta-title">{holdingHere ? `You're holding ${hold.slotCode} here` : `Hold a spot for ${rupees(v.holdFee)}`}</div>
+            <div className="holdcta-sub">
+              {holdingHere
+                ? `Held until ${clock(hold.expiresAt)}. Show ${hold.code} at the gate.`
+                : `You're ${minutes(v.etaMin)} away. We'll hold the best free spot until ${clock(holdUntil)} and credit the ${rupees(v.holdFee)} at exit. Full refund if you cancel within 5 min.`}
+            </div>
+          </section>
+          <div className="venue-cta is-hold">
+            <Button variant="primary" size="lg" block icon={holdingHere ? 'car' : 'ticket'} loading={holdBusy} onClick={holdingHere ? () => navigate('/car') : onHold}>
+              {holdingHere ? 'Open My Car' : hold ? `Switch my hold here, ${rupees(v.holdFee)}` : `Hold a spot, ${rupees(v.holdFee)}`}
+            </Button>
+            <div className="holdcta-alt">
+              {bestFloor ? (
+                <button type="button" className="linkbtn" onClick={() => navigate(`/floor/${encodeURIComponent(bestFloor.id)}`)}>
+                  Choose my own spot
+                </button>
+              ) : null}
+              <a className="linkbtn" href={directions} target="_blank" rel="noopener noreferrer">
+                Directions
+              </a>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 export default function Venue({ id }) {
   const desktop = useDesktop();
-  const { position } = useApp();
+  const { position, hold, setHold, session, user, setWalletBalance, toast } = useApp();
+  const [holdBusy, setHoldBusy] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [walletNeed, setWalletNeed] = useState(0);
   const [venue, setVenue] = useState(null);
   const [error, setError] = useState(null);
   const [alts, setAlts] = useState(null);
@@ -273,8 +310,44 @@ export default function Venue({ id }) {
 
   useEffect(() => () => window.clearTimeout(refetchTimer.current), []);
 
+  const holdHere = async () => {
+    if (!venue) return;
+    setHoldBusy(true);
+    try {
+      const r = await api.holdSpot({ venueId: venue.id, etaMinutes: venue.etaMin, origin: position.source === 'gps' ? { lat: position.lat, lng: position.lng } : undefined });
+      setHold(r.hold);
+      setWalletBalance(r.walletBalance);
+      toast(`${r.hold.slotCode} on floor ${r.hold.floorName} is yours until ${clock(r.hold.expiresAt)}.`, { kind: 'success', duration: 6000 });
+      navigate('/car');
+    } catch (e) {
+      if (e.code === 'INSUFFICIENT_BALANCE') {
+        setWalletNeed(e.details?.shortfall || venue.holdFee);
+        setWalletOpen(true);
+      } else if (e.code === 'VENUE_FULL') {
+        toast('It just filled up. Try one of the places nearby.', { kind: 'error' });
+        setReload((n) => n + 1);
+      } else toast(e.message, { kind: 'error' });
+    } finally {
+      setHoldBusy(false);
+    }
+  };
+
   const head = <ScreenHeader fallback="/" />;
-  const body = error ? <ErrorState error={error} onRetry={() => setReload((n) => n + 1)} /> : !venue ? <VenueSkeleton /> : <Body v={venue} alts={alts} />;
+  const body = error ? <ErrorState error={error} onRetry={() => setReload((n) => n + 1)} /> : !venue ? <VenueSkeleton /> : <Body v={venue} alts={alts} onHold={holdHere} holdBusy={holdBusy} hold={hold} session={session} />;
+  const walletSheet = (
+    <WalletSheet
+      open={walletOpen}
+      needed={walletNeed}
+      balance={user?.walletBalance ?? 0}
+      toast={toast}
+      onClose={() => setWalletOpen(false)}
+      onDone={(b) => {
+        setWalletBalance(b);
+        setWalletOpen(false);
+        holdHere();
+      }}
+    />
+  );
 
   if (desktop) {
     return (
@@ -286,6 +359,7 @@ export default function Venue({ id }) {
         <div className="stage">
           <VenueMap center={venue ? { lat: venue.lat, lng: venue.lng } : position} zoom={venue ? 15 : 12} venues={venue ? [venue] : []} selectedId={venue?.id} user={position.source === 'gps' ? { lat: position.lat, lng: position.lng } : null} showZoom focus={venue ? { lat: venue.lat, lng: venue.lng, zoom: 15, key: venue.id } : null} />
         </div>
+        {walletSheet}
       </div>
     );
   }
@@ -293,6 +367,7 @@ export default function Venue({ id }) {
     <div className="screen">
       {head}
       {body}
+      {walletSheet}
     </div>
   );
 }

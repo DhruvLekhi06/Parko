@@ -31,14 +31,17 @@ router.get('/', async (req, res) => {
     .filter((v) => !needle || v.name.toLowerCase().includes(needle) || v.address.toLowerCase().includes(needle) || v.city.toLowerCase().includes(needle))
     .map((v) => ({ v, straightM: haversineM(o.lat, o.lng, v.lat, v.lng) }))
     .sort((a, b) => a.straightM - b.straightM);
+  const nearestCity = rows[0]?.v.city || 'Bengaluru';
+  const cities = [...rows.reduce((m, r) => m.set(r.v.city, (m.get(r.v.city) || 0) + 1), new Map())].map(([name, count]) => ({ name, count }));
+  const scopeAll = !!city || !!needle || String(req.query.scope || '') === 'all';
+  const scoped = scopeAll ? rows : rows.filter((r) => r.v.city === nearestCity);
   const [floors, baseline] = await Promise.all([floorCounts(), trendBaseline()]);
   const byVenue = new Map();
   for (const f of floors) (byVenue.get(f.venueId) || byVenue.set(f.venueId, []).get(f.venueId)).push(f);
-  const near = rows.filter((r) => r.straightM <= 60000).slice(0, 30).map((r) => ({ id: r.v.id, lat: r.v.lat, lng: r.v.lng }));
+  const near = scoped.filter((r) => r.straightM <= 60000).slice(0, 30).map((r) => ({ id: r.v.id, lat: r.v.lat, lng: r.v.lng }));
   const matrix = await driveMatrix(o, near);
-  const venues = rows.map(({ v }) => formatVenue(v, o, byVenue.get(v.id) || [], baseline, matrix.get(v.id))).sort((a, b) => a.distanceM - b.distanceM);
-  const nearestCity = venues[0]?.city || 'Bengaluru';
-  res.json({ venues, origin: o, city: nearestCity, etaSource: matrix.size ? 'road' : 'estimate' });
+  const venues = scoped.map(({ v }) => formatVenue(v, o, byVenue.get(v.id) || [], baseline, matrix.get(v.id))).sort((a, b) => a.distanceM - b.distanceM);
+  res.json({ venues, origin: o, city: nearestCity, cities, etaSource: matrix.size ? 'road' : 'estimate' });
 });
 
 router.get('/:id', async (req, res) => {

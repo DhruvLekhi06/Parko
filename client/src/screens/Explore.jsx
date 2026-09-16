@@ -80,6 +80,7 @@ export default function Explore() {
   const [ev, setEv] = useState(false);
   const [acc, setAcc] = useState(false);
   const [venues, setVenues] = useState(null);
+  const [city, setCity] = useState('');
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [snap, setSnap] = useState('half');
@@ -96,6 +97,7 @@ export default function Explore() {
       .then((d) => {
         if (!alive) return;
         setVenues(d?.venues || []);
+        setCity(d?.city || '');
         setError(null);
       })
       .catch((e) => {
@@ -155,17 +157,11 @@ export default function Explore() {
       <div className="banner" role="status">
         <Icon name="alert" size={18} />
         <span className="banner-text">
-          {position.reason === 'denied'
-            ? 'Location is off, so this is central Bengaluru. Turn it on to see spots near you.'
-            : position.reason === 'far'
-              ? "You're outside Bengaluru. Showing spots around MG Road."
-              : "Couldn't get your location. Showing central Bengaluru."}
+          {position.reason === 'denied' ? 'Location is off, so this is central Bengaluru. Turn it on to see spots near you.' : "Couldn't get your location. Showing central Bengaluru."}
         </span>
-        {position.reason !== 'far' ? (
-          <Button variant="ghost" size="sm" onClick={position.locate}>
-            Retry
-          </Button>
-        ) : null}
+        <Button variant="ghost" size="sm" onClick={position.locate}>
+          Retry
+        </Button>
         <IconButton name="close" label="Dismiss" onClick={() => setBannerGone(true)} />
       </div>
     ) : null;
@@ -198,8 +194,8 @@ export default function Explore() {
   const header = (
     <div className="row-between">
       <div>
-        <div className="sheet-title">{venues ? `${venues.length} ${venues.length === 1 ? 'place' : 'places'} ${position.source === 'gps' ? 'near you' : 'nearby'}` : 'Finding spots'}</div>
-        <div className="sheet-sub">Closest first. Counts update live.</div>
+        <div className="sheet-title">{venues ? `${venues.length} ${venues.length === 1 ? 'place' : 'places'} ${position.source === 'gps' ? 'near you' : 'nearby'}${city ? ` in ${city}` : ''}` : 'Finding spots'}</div>
+        <div className="sheet-sub">Closest first, live drive times. Counts update live.</div>
       </div>
     </div>
   );

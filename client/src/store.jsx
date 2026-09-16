@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api.js';
 import { useLiveEvents } from './hooks/useLiveEvents.js';
-import { useGeolocation } from './hooks/useGeolocation.js';
+import { useGeolocation, metresBetween } from './hooks/useGeolocation.js';
 
 const Ctx = createContext(null);
 export const WELCOME_KEY = 'spoton.welcomed';
+export const ARRIVAL_RADIUS_M = 250;
 
 function readWelcomed() {
   try {
@@ -17,15 +18,16 @@ function readWelcomed() {
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userError, setUserError] = useState(null);
-  const [reservation, setReservation] = useState(null);
+  const [hold, setHold] = useState(null);
   const [session, setSession] = useState(null);
   const [serverFee, setServerFee] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [welcomed, setWelcomed] = useState(readWelcomed);
   const live = useLiveEvents();
   const position = useGeolocation();
-  const reservationRef = useRef(null);
-  reservationRef.current = reservation;
+  const holdRef = useRef(null);
+  holdRef.current = hold;
+  const arrivedFor = useRef(null);
 
   const dismissToast = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), []);
   const toast = useCallback(
@@ -50,16 +52,22 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const setWalletBalance = useCallback((balance) => {
+    if (typeof balance !== 'number') return;
+    setUser((u) => (u ? { ...u, walletBalance: balance } : u));
+  }, []);
+
   const refreshActive = useCallback(async () => {
     try {
-      const [r, s] = await Promise.all([api.activeReservation(), api.activeSession()]);
-      setReservation(r?.reservation ?? null);
+      const [h, s] = await Promise.all([api.activeHold(), api.activeSession()]);
+      setHold(h?.hold ?? null);
       setSession(s?.session ?? null);
-      setServerFee(s?.session ? { feeNow: s.feeNow ?? 0, elapsedMinutes: s.elapsedMinutes ?? 0, at: Date.now() } : null);
+      setServerFee(s?.session ? { feeNow: s.feeNow ?? 0, dueNow: s.dueNow ?? 0, holdCredit: s.holdCredit ?? 0, elapsedMinutes: s.elapsedMinutes ?? 0, at: Date.now() } : null);
+      if (typeof s?.walletBalance === 'number') setWalletBalance(s.walletBalance);
     } catch {
       /* keep whatever we have; screens surface their own errors */
     }
-  }, []);
+  }, [setWalletBalance]);
 
   useEffect(() => {
     refreshUser();
@@ -69,23 +77,33 @@ export function AppProvider({ children }) {
   useEffect(
     () =>
       live.subscribe((type, data) => {
-        if (type !== 'reservation') return;
-        const r = reservationRef.current;
-        if (!r || data.id !== r.id) return;
+        if (type !== 'hold') return;
+        const h = holdRef.current;
+        if (!h || data.id !== h.id) return;
         if (data.status && data.status !== 'active') {
-          setReservation(null);
-          if (data.status === 'expired') toast(`Your hold on ${r.slotCode} expired. The spot is open again.`, { kind: 'warn', duration: 6000 });
+          setHold(null);
+          if (data.status === 'expired') toast(`Your hold on ${h.slotCode} at ${h.venueName} expired. The spot is open again.`, { kind: 'warn', duration: 6000 });
         }
       }),
     [live, toast]
   );
 
   useEffect(() => {
-    if (!reservation?.expiresAt) return undefined;
-    const ms = new Date(reservation.expiresAt).getTime() - Date.now();
+    if (!hold?.expiresAt) return undefined;
+    const ms = new Date(hold.expiresAt).getTime() - Date.now();
     const id = window.setTimeout(() => refreshActive(), Math.max(800, ms + 1500));
     return () => window.clearTimeout(id);
-  }, [reservation, refreshActive]);
+  }, [hold, refreshActive]);
+
+  const distanceToHoldM = hold && position.source === 'gps' && hold.venueLat != null ? metresBetween(position, { lat: hold.venueLat, lng: hold.venueLng }) : null;
+  const arrived = distanceToHoldM != null && distanceToHoldM <= ARRIVAL_RADIUS_M;
+
+  useEffect(() => {
+    if (!arrived || !hold) return;
+    if (arrivedFor.current === hold.id) return;
+    arrivedFor.current = hold.id;
+    toast(`You're at ${hold.venueName}. Head to ${hold.slotCode} and tap "I've parked".`, { kind: 'success', duration: 7000 });
+  }, [arrived, hold, toast]);
 
   const finishWelcome = useCallback(() => {
     try {
@@ -98,26 +116,12 @@ export function AppProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      user,
-      setUser,
-      userError,
-      refreshUser,
-      reservation,
-      setReservation,
-      session,
-      setSession,
-      serverFee,
-      setServerFee,
-      refreshActive,
-      toasts,
-      toast,
-      dismissToast,
-      live,
-      position,
-      welcomed,
-      finishWelcome,
+      user, setUser, userError, refreshUser, setWalletBalance,
+      hold, setHold, session, setSession, serverFee, setServerFee, refreshActive,
+      distanceToHoldM, arrived,
+      toasts, toast, dismissToast, live, position, welcomed, finishWelcome,
     }),
-    [user, userError, refreshUser, reservation, session, serverFee, refreshActive, toasts, toast, dismissToast, live, position, welcomed, finishWelcome]
+    [user, userError, refreshUser, setWalletBalance, hold, session, serverFee, refreshActive, distanceToHoldM, arrived, toasts, toast, dismissToast, live, position, welcomed, finishWelcome]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

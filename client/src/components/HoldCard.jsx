@@ -1,5 +1,5 @@
 import { useNow } from '../hooks/useNow.js';
-import { countdown, distance, minutes, walkTime } from '../lib/format.js';
+import { countdown, distance, minutes, walkTime, clock, rupees } from '../lib/format.js';
 import { Button, Skeleton } from './Primitives.jsx';
 import { Icon } from './Icons.jsx';
 
@@ -54,36 +54,65 @@ export function RouteSteps({ route, loading, steps, title, reversed = false }) {
   );
 }
 
-export function ReservationCard({ reservation, route, routeLoading, onCancel, onParked, onOpenFloor, busy, showRoute = true }) {
-  if (!reservation) return null;
+export function mapsUrl(lat, lng) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+}
+
+export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExtend, onOpenFloor, busy, showRoute = true, distanceM, arrived }) {
+  const now = useNow(15000, !!hold);
+  if (!hold) return null;
+  const refundable = now < new Date(hold.refundableUntil).getTime();
   return (
     <div className="rescard">
       <div className="rescard-top">
         <div>
-          <div className="rescard-title">Holding {reservation.slotCode}</div>
+          <div className="rescard-eyebrow">{arrived ? "You're here" : 'On the way to'}</div>
+          <div className="rescard-title">{hold.venueName}</div>
           <div className="rescard-sub">
-            {reservation.venueName}, floor {reservation.floorName}
+            Spot {hold.slotCode}, floor {hold.floorName}
+            {hold.plate ? `, ${hold.plate}` : ''}
           </div>
         </div>
-        <Countdown expiresAt={reservation.expiresAt} />
+        <Countdown expiresAt={hold.expiresAt} />
+      </div>
+      <div className="holdmeta">
+        <span>
+          <Icon name="clock" size={14} /> Held until {clock(hold.expiresAt)}
+        </span>
+        {distanceM != null ? (
+          <span>
+            <Icon name="navigate" size={14} /> {distance(distanceM)} away
+          </span>
+        ) : null}
+        <span>
+          <Icon name="ticket" size={14} /> {rupees(hold.holdFee)} hold, adjusted at exit
+        </span>
       </div>
       <div className="gatecode">
         <div className="gatecode-k">Show at the gate</div>
-        <div className="gatecode-v">{reservation.code}</div>
+        <div className="gatecode-v">{hold.code}</div>
       </div>
-      {showRoute ? <RouteSteps route={route} loading={routeLoading} title="Drive to your spot" /> : null}
+      {showRoute ? <RouteSteps route={route} loading={routeLoading} title="Inside the car park" /> : null}
       <div className="rescard-actions">
-        <Button variant="secondary" onClick={onCancel} disabled={busy}>
-          Cancel
+        <Button variant="secondary" icon="navigate" onClick={() => window.open(mapsUrl(hold.venueLat, hold.venueLng), '_blank', 'noopener')} disabled={!!busy}>
+          Navigate
         </Button>
         {onOpenFloor ? (
-          <Button variant="secondary" icon="map" onClick={onOpenFloor} disabled={busy}>
+          <Button variant="secondary" icon="map" onClick={onOpenFloor} disabled={!!busy}>
             Floor plan
           </Button>
         ) : null}
-        <Button variant="primary" icon="check" onClick={onParked} loading={busy === 'park'} disabled={!!busy}>
+        <Button variant="primary" icon="check" onClick={onArrived} loading={busy === 'park'} disabled={!!busy}>
           I've parked
         </Button>
+      </div>
+      <div className="rescard-foot">
+        <button type="button" className="linkbtn" onClick={onExtend} disabled={!!busy}>
+          Need more time? +15 min
+        </button>
+        <button type="button" className="linkbtn is-danger" onClick={onCancel} disabled={!!busy}>
+          {refundable ? `Cancel, ${rupees(hold.holdFee)} refunded` : 'Cancel hold'}
+        </button>
       </div>
     </div>
   );

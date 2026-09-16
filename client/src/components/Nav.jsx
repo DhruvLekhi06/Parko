@@ -11,8 +11,8 @@ const ITEMS = [
 
 export function BottomNav() {
   const route = useRoute();
-  const { session, reservation } = useApp();
-  const liveDot = !!(session || reservation);
+  const { session, hold } = useApp();
+  const liveDot = !!(session || hold);
   return (
     <nav className="bottomnav" aria-label="Primary">
       {ITEMS.map((it) => {
@@ -33,8 +33,8 @@ export function BottomNav() {
 
 export function Rail() {
   const route = useRoute();
-  const { session, reservation, live } = useApp();
-  const liveDot = !!(session || reservation);
+  const { session, hold, live } = useApp();
+  const liveDot = !!(session || hold);
   const status = live.status === 'open' ? 'Live' : live.status === 'connecting' ? 'Connecting' : 'Reconnecting';
   return (
     <nav className="rail" aria-label="Primary">

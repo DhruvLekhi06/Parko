@@ -4,12 +4,11 @@ import { useApp, useLiveEvent } from '../store.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
 import { navigate } from '../router.jsx';
 import { FloorPlan, Legend } from '../components/FloorPlan.jsx';
-import { ReservationCard, RouteSteps } from '../components/ReservationCard.jsx';
+import { HoldCard, RouteSteps } from '../components/HoldCard.jsx';
+import { WalletSheet } from '../components/WalletSheet.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { Button, ErrorState, IconButton, Pill, ScreenHeader, Skeleton } from '../components/Primitives.jsx';
-import { walkMeters, walkTime, reverseSteps } from '../lib/format.js';
-
-const DURATIONS = [15, 30, 60];
+import { walkMeters, walkTime, reverseSteps, rupees, minutes as fmtMinutes } from '../lib/format.js';
 
 function FloorTabs({ floors, activeId }) {
   if (!floors?.length) return null;
@@ -25,7 +24,7 @@ function FloorTabs({ floors, activeId }) {
   );
 }
 
-function SlotCard({ slot, floor, minutes, setMinutes, onHold, onParkHere, onClose, busy, isBest }) {
+function SlotCard({ slot, holdFee, etaMin, onHold, onParkHere, onClose, busy, isBest }) {
   const meters = walkMeters(slot.distToEntrance);
   const free = slot.status === 'free';
   const note = slot.status === 'occupied' ? 'Taken right now. Pick a green one.' : slot.status === 'reserved' ? 'Held by another driver for now.' : null;
@@ -63,20 +62,13 @@ function SlotCard({ slot, floor, minutes, setMinutes, onHold, onParkHere, onClos
       </div>
       {free ? (
         <>
-          <div className="seg" role="radiogroup" aria-label="Hold duration">
-            {DURATIONS.map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={minutes === m} className={`seg-btn ${minutes === m ? 'is-active' : ''}`} onClick={() => setMinutes(m)}>
-                {m} min
-              </button>
-            ))}
-          </div>
           <div className="slotcard-actions">
-            <Button variant="primary" size="lg" onClick={onHold} loading={busy === 'hold'} disabled={!!busy}>
-              Hold this spot
+            <Button variant="primary" size="lg" icon="ticket" onClick={onHold} loading={busy === 'hold'} disabled={!!busy}>
+              Hold this spot, {rupees(holdFee)}
             </Button>
           </div>
           <div className="slotcard-note">
-            Free to hold for {minutes} minutes. Already parked here?{' '}
+            Held until you arrive ({fmtMinutes(etaMin)} drive plus 15 min grace). The {rupees(holdFee)} is credited at exit. Already parked here?{' '}
             <button type="button" className="linkbtn" onClick={onParkHere} disabled={!!busy}>
               Start the timer
             </button>
@@ -112,12 +104,13 @@ function FindCard({ session, route, loading, onBack }) {
 
 export default function Floor({ id, query }) {
   const desktop = useDesktop();
-  const { reservation, setReservation, session, setSession, toast, refreshActive } = useApp();
+  const { hold: activeHold, setHold, session, setSession, toast, refreshActive, position, user, setWalletBalance } = useApp();
   const [floor, setFloor] = useState(null);
   const [error, setError] = useState(null);
   const [venue, setVenue] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
-  const [minutes, setMinutes] = useState(30);
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [walletNeed, setWalletNeed] = useState(0);
   const [busy, setBusy] = useState(null);
   const [route, setRoute] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
@@ -136,9 +129,9 @@ export default function Floor({ id, query }) {
   }, []);
 
   const findMode = query?.find === '1' && session && session.floorId === id;
-  const myReservation = reservation && reservation.floorId === id ? reservation : null;
-  const mySlotId = findMode ? session.slotId : myReservation ? myReservation.slotId : session?.floorId === id ? session.slotId : null;
-  const routeSlotId = findMode ? session.slotId : myReservation?.slotId || null;
+  const myHold = activeHold && activeHold.floorId === id ? activeHold : null;
+  const mySlotId = findMode ? session.slotId : myHold ? myHold.slotId : session?.floorId === id ? session.slotId : null;
+  const routeSlotId = findMode ? session.slotId : myHold?.slotId || null;
   const routeKey = routeSlotId ? `${routeSlotId}-${findMode ? 'find' : 'res'}` : null;
 
   useEffect(() => {
@@ -238,19 +231,24 @@ export default function Floor({ id, query }) {
     [mySlotId]
   );
 
-  const hold = async () => {
-    if (!slot) return;
+  const holdSlot = async (target = slot) => {
+    if (!target) return;
     setBusy('hold');
     try {
-      const r = await api.reserve(slot.id, minutes);
-      const res = r?.reservation ?? r;
-      setReservation(res);
-      setSlotStatus(res.slotId, 'reserved');
+      const r = await api.holdSpot({ slotId: target.id, etaMinutes: venue?.etaMin ?? 30, origin: position.source === 'gps' ? { lat: position.lat, lng: position.lng } : undefined });
+      setHold(r.hold);
+      setWalletBalance(r.walletBalance);
+      setSlotStatus(r.hold.slotId, 'reserved');
       setSelectedId(null);
-      toast(`Spot ${res.slotCode} is yours for ${minutes} minutes.`, { kind: 'success' });
+      toast(`${r.hold.slotCode} is yours until ${new Date(r.hold.expiresAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}.`, { kind: 'success' });
     } catch (e) {
-      toast(e.status === 409 ? 'Someone just took that spot. Pick another.' : e.message, { kind: 'error' });
-      setReload((n) => n + 1);
+      if (e.code === 'INSUFFICIENT_BALANCE') {
+        setWalletNeed(e.details?.shortfall || venue?.holdFee || 2000);
+        setWalletOpen(true);
+      } else {
+        toast(e.status === 409 ? 'Someone just took that spot. Pick another.' : e.message, { kind: 'error' });
+        setReload((n) => n + 1);
+      }
     } finally {
       setBusy(null);
     }
@@ -263,7 +261,7 @@ export default function Floor({ id, query }) {
       const r = await api.startSession({ slotId: slot.id });
       setSession(r?.session ?? r);
       setSlotStatus(slot.id, 'occupied');
-      setReservation(null);
+      setHold(null);
       toast(`Parked at ${slot.code}. Timer running.`, { kind: 'success' });
       navigate('/car');
     } catch (e) {
@@ -275,13 +273,14 @@ export default function Floor({ id, query }) {
   };
 
   const cancel = async () => {
-    if (!myReservation) return;
+    if (!myHold) return;
     setBusy('cancel');
     try {
-      await api.cancelReservation(myReservation.id);
-      setSlotStatus(myReservation.slotId, 'free');
-      setReservation(null);
-      toast('Hold released.');
+      const r = await api.cancelHold(myHold.id);
+      setSlotStatus(myHold.slotId, 'free');
+      setHold(null);
+      setWalletBalance(r?.walletBalance);
+      toast(r?.refunded ? `Hold released. ${rupees(r.refunded)} refunded.` : 'Hold released.');
     } catch (e) {
       toast(e.message, { kind: 'error' });
       refreshActive();
@@ -291,18 +290,31 @@ export default function Floor({ id, query }) {
   };
 
   const parked = async () => {
-    if (!myReservation) return;
+    if (!myHold) return;
     setBusy('park');
     try {
-      const r = await api.startSession({ reservationId: myReservation.id });
+      const r = await api.arrive(myHold.id);
       setSession(r?.session ?? r);
-      setSlotStatus(myReservation.slotId, 'occupied');
-      setReservation(null);
-      toast(`Parked at ${myReservation.slotCode}. Timer running.`, { kind: 'success' });
+      setSlotStatus(myHold.slotId, 'occupied');
+      setHold(null);
+      toast(`Parked at ${myHold.slotCode}. Timer running.`, { kind: 'success' });
       navigate('/car');
     } catch (e) {
       toast(e.message, { kind: 'error' });
       refreshActive();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const extend = async () => {
+    if (!myHold) return;
+    setBusy('extend');
+    try {
+      const r = await api.extendHold(myHold.id, 15);
+      setHold(r?.hold ?? myHold);
+    } catch (e) {
+      toast(e.message, { kind: 'error' });
     } finally {
       setBusy(null);
     }
@@ -314,21 +326,36 @@ export default function Floor({ id, query }) {
 
   let card = null;
   if (findMode) card = <FindCard session={session} route={route} loading={routeLoading} onBack={() => navigate('/car')} />;
-  else if (myReservation) card = <ReservationCard reservation={myReservation} route={route} routeLoading={routeLoading} onCancel={cancel} onParked={parked} busy={busy} />;
-  else if (slot) card = <SlotCard slot={slot} floor={floor} minutes={minutes} setMinutes={setMinutes} onHold={hold} onParkHere={parkHere} onClose={() => setSelectedId(null)} busy={busy} isBest={slot.id === floor?.recommendedSlotId} />;
+  else if (myHold) card = <HoldCard hold={myHold} route={route} routeLoading={routeLoading} onCancel={cancel} onArrived={parked} onExtend={extend} busy={busy} />;
+  else if (slot) card = <SlotCard slot={slot} holdFee={venue?.holdFee ?? 2000} etaMin={venue?.etaMin ?? 30} onHold={() => holdSlot(slot)} onParkHere={parkHere} onClose={() => setSelectedId(null)} busy={busy} isBest={slot.id === floor?.recommendedSlotId} />;
 
   const otherHold =
-    reservation && reservation.floorId !== id ? (
+    activeHold && activeHold.floorId !== id ? (
       <div className="hint" style={{ margin: '0 12px 10px' }}>
         <Icon name="ticket" size={18} />
         <span>
-          You're already holding {reservation.slotCode} on floor {reservation.floorName} at {reservation.venueName}.{' '}
-          <button type="button" className="linkbtn" onClick={() => navigate(`/floor/${encodeURIComponent(reservation.floorId)}`)}>
+          You're already holding {activeHold.slotCode} on floor {activeHold.floorName} at {activeHold.venueName}. Holding a spot here moves it (your fee carries over).{' '}
+          <button type="button" className="linkbtn" onClick={() => navigate(`/floor/${encodeURIComponent(activeHold.floorId)}`)}>
             Open it
           </button>
         </span>
       </div>
     ) : null;
+
+  const walletSheet = (
+    <WalletSheet
+      open={walletOpen}
+      needed={walletNeed}
+      balance={user?.walletBalance ?? 0}
+      toast={toast}
+      onClose={() => setWalletOpen(false)}
+      onDone={(b) => {
+        setWalletBalance(b);
+        setWalletOpen(false);
+        if (slot) holdSlot(slot);
+      }}
+    />
+  );
 
   const plan = error ? (
     <ErrorState error={error} onRetry={() => setReload((n) => n + 1)} />
@@ -380,6 +407,7 @@ export default function Floor({ id, query }) {
           </div>
         </aside>
         <div className="stage floor-stage">{plan}</div>
+        {walletSheet}
       </div>
     );
   }
@@ -395,7 +423,7 @@ export default function Floor({ id, query }) {
       <div className="floor-stage">
         {plan}
         {card ? (
-          <div ref={sheetRef} className="slotsheet" role="dialog" aria-label={findMode ? 'Walking directions' : myReservation ? 'Your hold' : 'Slot details'}>
+          <div ref={sheetRef} className="slotsheet" role="dialog" aria-label={findMode ? 'Walking directions' : myHold ? 'Your hold' : 'Slot details'}>
             <div className="bsheet-grip" aria-hidden="true">
               <span className="sheet-grab" />
             </div>
@@ -403,6 +431,7 @@ export default function Floor({ id, query }) {
           </div>
         ) : null}
       </div>
+      {walletSheet}
     </div>
   );
 }

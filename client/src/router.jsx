@@ -30,6 +30,7 @@ const ROUTES = [
   ['venue', /^\/venue\/([^/]+)$/],
   ['floor', /^\/floor\/([^/]+)$/],
   ['car', /^\/car$/],
+  ['activity', /^\/activity$/],
   ['profile', /^\/profile$/],
   ['go', /^\/go\/([^/]+)$/],
   ['admin', /^\/admin$/],

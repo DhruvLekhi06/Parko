@@ -42,6 +42,8 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - 2026-09-13: SQLite via node:sqlite instead of better-sqlite3 to avoid a native build; SSE instead of ws to avoid a dep.
 
 ## Gotchas
+- Push: `gh auth switch -u DhruvLekhi06 && git push; gh auth switch -u DhruvStratnova` (the default active gh account has no access to DhruvLekhi06/Parko). First push done 2026-09-17.
+- Install prompt (`hooks/useInstall.js`, `components/InstallBanner.jsx`) only fires on https or localhost with the production build (`npm run build && npm start` → http://localhost:3001). On the LAN dev URL Android shows nothing; iOS gets the Add to Home Screen steps.
 - Chrome MCP could not type into the portal's password field (Chrome's password popup stole focus); setting `localStorage.spoton.admin` then reloading works for testing. Real users type normally.
 - History backfill: seeded 24h history expires when the server is off for a day; `backfillHistory()` on boot refills any venue with sparse history so sparklines never show "No history yet".
 - `db.js` uses AsyncLocalStorage so `tx(fn)` binds one client for every query inside fn; `notifyVenue` deliberately escapes the tx via setTimeout so SSE reads use the pool.

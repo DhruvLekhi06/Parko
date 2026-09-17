@@ -155,7 +155,7 @@ export const VEHICLE_KINDS = { car: 'Car', suv: 'SUV', bike: 'Bike' };
 
 export const TXN_LABELS = {
   topup: 'Top-up',
-  hold_fee: 'Hold fee',
+  hold_fee: 'Booking fee',
   parking_fee: 'Parking',
   refund: 'Refund',
 };

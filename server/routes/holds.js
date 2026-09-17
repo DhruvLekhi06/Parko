@@ -21,7 +21,7 @@ export async function cancelActiveHolds(userId, { refund } = {}) {
     if (h.slot_status === 'reserved') await setSlotStatus(h.slot_id, 'free');
     const withinWindow = Date.now() - new Date(h.created_at).getTime() <= HOLD_REFUND_WINDOW_MIN * 60000;
     if (h.hold_fee > 0 && (refund === true || (refund === 'window' && withinWindow))) {
-      await credit(userId, h.hold_fee, 'refund', { refType: 'hold', refId: h.id, note: 'Hold fee refunded' });
+      await credit(userId, h.hold_fee, 'refund', { refType: 'hold', refId: h.id, note: 'Booking fee refunded' });
     }
   }
   return rows;
@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
     }
     await cancelActiveHolds(user.id, { refund: true });
     id = newId('h');
-    await debit(user.id, holdFee, 'hold_fee', { refType: 'hold', refId: id, note: `Hold at ${venue.name}` });
+    await debit(user.id, holdFee, 'hold_fee', { refType: 'hold', refId: id, note: `Booking at ${venue.name}` });
     await run(`insert into holds (id, slot_id, user_id, vehicle_id, status, expires_at, eta_minutes, hold_fee, code, origin_lat, origin_lng)
       values ($1,$2,$3,$4,'active', now() + ($5 || ' minutes')::interval, $6, $7, $8, $9, $10)`,
       [id, slot.id, user.id, vehicle?.id || null, String(holdMinutes), eta, holdFee, gateCode(), o?.lat ?? null, o?.lng ?? null]);
@@ -64,6 +64,15 @@ router.post('/', async (req, res) => {
   const hold = formatHold(await getHold(id));
   const balance = (await one(`select wallet_balance from users where id = $1`, [user.id])).wallet_balance;
   res.status(201).json({ hold, reservation: hold, walletBalance: balance });
+});
+
+router.get('/', async (req, res) => {
+  const user = await currentUser(req);
+  const rows = await many(`select h.*, s.code as slot_code, s.status as slot_status, f.id as floor_id, f.name as floor_name,
+      v.id as venue_id, v.name as venue_name, v.lat as venue_lat, v.lng as venue_lng, v.address as venue_address, ve.plate as plate
+    from holds h join slots s on s.id = h.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id
+    left join vehicles ve on ve.id = h.vehicle_id where h.user_id = $1 order by h.created_at desc limit 100`, [user.id]);
+  res.json({ holds: rows.map(formatHold) });
 });
 
 router.get('/active', async (req, res) => {
@@ -103,7 +112,7 @@ router.delete('/:id', async (req, res) => {
       await run(`update holds set status = 'cancelled' where id = $1`, [h.id]);
       if (h.slot_status === 'reserved') await setSlotStatus(h.slot_id, 'free');
       if (withinWindow && h.hold_fee > 0) {
-        await credit(user.id, h.hold_fee, 'refund', { refType: 'hold', refId: h.id, note: 'Hold fee refunded' });
+        await credit(user.id, h.hold_fee, 'refund', { refType: 'hold', refId: h.id, note: 'Booking fee refunded' });
         refunded = h.hold_fee;
       }
     });

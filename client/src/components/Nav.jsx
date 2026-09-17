@@ -5,8 +5,9 @@ import { useApp } from '../store.jsx';
 
 const ITEMS = [
   { to: '/', name: 'explore', icon: 'compass', label: 'Explore', match: (r) => r === 'explore' || r === 'venue' || r === 'floor' },
-  { to: '/car', name: 'car', icon: 'car', label: 'My Car', match: (r) => r === 'car' },
-  { to: '/profile', name: 'profile', icon: 'user', label: 'Profile', match: (r) => r === 'profile' },
+  { to: '/car', name: 'car', icon: 'car', label: 'My Car', match: (r) => r === 'car' || r === 'go' },
+  { to: '/activity', name: 'activity', icon: 'history', label: 'Activity', match: (r) => r === 'activity' },
+  { to: '/profile', name: 'profile', icon: 'user', label: 'Profile', match: (r) => r === 'profile' || r === 'admin' },
 ];
 
 export function BottomNav() {

@@ -85,6 +85,7 @@ export const api = {
   route: (slotId) => request(`/api/route${qs({ slotId })}`),
 
   holdSpot: (body) => request('/api/holds', { method: 'POST', body }),
+  holds: () => request('/api/holds'),
   activeHold: () => request('/api/holds/active'),
   cancelHold: (id) => request(`/api/holds/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   extendHold: (id, minutes) => request(`/api/holds/${encodeURIComponent(id)}/extend`, { method: 'POST', body: { minutes } }),

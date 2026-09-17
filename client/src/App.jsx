@@ -3,11 +3,13 @@ import { AppProvider, useApp } from './store.jsx';
 import { useRoute } from './router.jsx';
 import { BottomNav, Rail } from './components/Nav.jsx';
 import { LivePill, Toasts, EmptyState, ErrorBoundary } from './components/Primitives.jsx';
+import { InstallNudge } from './components/InstallNudge.jsx';
 import Explore from './screens/Explore.jsx';
 import Venue from './screens/Venue.jsx';
 import Floor from './screens/Floor.jsx';
 import MyCar from './screens/MyCar.jsx';
 import Profile from './screens/Profile.jsx';
+import Activity from './screens/Activity.jsx';
 import Welcome from './screens/Welcome.jsx';
 import Go from './screens/Go.jsx';
 import Admin from './screens/Admin.jsx';
@@ -31,6 +33,7 @@ function Shell() {
   if (route.name === 'venue') screen = <Venue key={route.params.id} id={route.params.id} />;
   else if (route.name === 'floor') screen = <Floor key={route.params.id} id={route.params.id} query={route.query} />;
   else if (route.name === 'car') screen = <MyCar />;
+  else if (route.name === 'activity') screen = <Activity query={route.query} />;
   else if (route.name === 'profile') screen = <Profile />;
   else if (route.name === 'go') screen = <Go key={route.params.id} id={route.params.id} />;
   else if (route.name === 'admin') screen = <Admin />;
@@ -55,6 +58,7 @@ function Shell() {
       <BottomNav />
       <Toasts />
       <LivePill />
+      <InstallNudge hidden={!welcomed || route.name === 'admin'} />
       {!welcomed ? <Welcome /> : null}
     </div>
   );

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useApp } from '../store.jsx';
-import { Link } from '../router.jsx';
+import { Link, navigate } from '../router.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
-import { Button, ErrorState, ScreenHeader, Skeleton, Toggle, EmptyState, Pill, IconButton } from '../components/Primitives.jsx';
+import { Button, ErrorState, ScreenHeader, Toggle, Pill, IconButton } from '../components/Primitives.jsx';
 import { WalletSheet } from '../components/WalletSheet.jsx';
 import { InstallBanner } from '../components/InstallBanner.jsx';
 import { Icon } from '../components/Icons.jsx';
-import { rupees, formatPlate, dateLabel, clock, minutes as fmtMinutes, maskTag, VEHICLE_KINDS, TXN_LABELS } from '../lib/format.js';
+import { rupees, formatPlate, maskTag, VEHICLE_KINDS } from '../lib/format.js';
 
 export function DetailsForm({ initial, onSaved, submitLabel = 'Save changes', autoFocus = false }) {
   const [name, setName] = useState(initial?.name || '');
@@ -174,35 +174,8 @@ function VehicleRow({ v, onEdit, onRemove, onDefault }) {
 export default function Profile() {
   const desktop = useDesktop();
   const { user, setUser, userError, refreshUser, setWalletBalance, toast } = useApp();
-  const [history, setHistory] = useState(null);
-  const [histError, setHistError] = useState(null);
-  const [txns, setTxns] = useState(null);
-  const [txnsOpen, setTxnsOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    api
-      .sessions()
-      .then((d) => alive && setHistory((d?.sessions || []).filter((s) => s.endedAt)))
-      .catch((e) => alive && setHistError(e));
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!txnsOpen) return undefined;
-    let alive = true;
-    api
-      .wallet()
-      .then((d) => alive && setTxns(d?.transactions || []))
-      .catch(() => alive && setTxns([]));
-    return () => {
-      alive = false;
-    };
-  }, [txnsOpen, user?.walletBalance]);
 
   const initials = (user?.name || 'You')
     .split(' ')
@@ -257,35 +230,10 @@ export default function Profile() {
           <div className="walletcard-sub">
             {user?.defaultVehicle?.fastagLinked ? `Auto-debits on FASTag ${maskTag(user.defaultVehicle.fastagId)} for holds and parking.` : 'Pays your hold fees and parking. Link a FASTag to drive out without stopping.'}
           </div>
-          <button type="button" className="walletcard-toggle" onClick={() => setTxnsOpen((o) => !o)} aria-expanded={txnsOpen}>
-            {txnsOpen ? 'Hide transactions' : 'Transactions'}
-            <Icon name="chevron" size={16} className={txnsOpen ? 'is-up' : ''} />
+          <button type="button" className="walletcard-toggle" onClick={() => navigate('/activity?tab=wallet')}>
+            Wallet history
+            <Icon name="chevron" size={16} />
           </button>
-          {txnsOpen ? (
-            <div className="txns">
-              {!txns ? (
-                <Skeleton h={44} r={10} />
-              ) : txns.length === 0 ? (
-                <div className="txn-empty">No transactions yet.</div>
-              ) : (
-                txns.map((t) => (
-                  <div key={t.id} className="txn">
-                    <div>
-                      <div className="txn-name">{TXN_LABELS[t.kind] || t.kind}</div>
-                      <div className="txn-sub">
-                        {t.note ? `${t.note}, ` : ''}
-                        {dateLabel(t.createdAt)}, {clock(t.createdAt)}
-                      </div>
-                    </div>
-                    <div className={`txn-amt num ${t.amount >= 0 ? 'is-credit' : ''}`}>
-                      {t.amount >= 0 ? '+' : '-'}
-                      {rupees(Math.abs(t.amount))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : null}
         </section>
 
         <section className="section" aria-label="Vehicles">
@@ -342,39 +290,6 @@ export default function Profile() {
           </section>
         )}
 
-        <section className="section" aria-label="Parking history">
-          <div className="section-title">History</div>
-          {histError ? (
-            <ErrorState error={histError} compact />
-          ) : !history ? (
-            <div className="stack">
-              <Skeleton h={60} r={14} />
-              <Skeleton h={60} r={14} />
-            </div>
-          ) : history.length === 0 ? (
-            <EmptyState icon="history" title="No parking yet" body="Your past visits and what you paid will show up here." />
-          ) : (
-            <div className="history">
-              {history.map((s) => (
-                <div key={s.id} className="hitem">
-                  <div>
-                    <div className="hitem-name">
-                      {s.venueName}, {s.slotCode}
-                    </div>
-                    <div className="hitem-sub">
-                      {dateLabel(s.startedAt)}, {clock(s.startedAt)}
-                      {s.plate ? `, ${s.plate}` : ''}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="hitem-fee">{rupees(Math.max(0, (s.fee || 0) - (s.holdCredit || 0)))}</div>
-                    <div className="hitem-dur">{s.durationMinutes != null ? fmtMinutes(s.durationMinutes) : ''}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
         <section className="section" aria-label="Get the app">
           <InstallBanner always />
         </section>

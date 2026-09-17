@@ -8,7 +8,6 @@ import { VenueMap } from '../components/VenueMap.jsx';
 import { BottomSheet } from '../components/BottomSheet.jsx';
 import { Icon, TYPE_ICON } from '../components/Icons.jsx';
 import { Brand } from '../components/Nav.jsx';
-import { InstallBanner } from '../components/InstallBanner.jsx';
 import { Chip, Count, FillBar, Skeleton, EmptyState, ErrorState, Button, IconButton } from '../components/Primitives.jsx';
 import { distance, minutes, levelInfo, TYPE_LABELS } from '../lib/format.js';
 
@@ -197,8 +196,6 @@ export default function Explore() {
     </div>
   );
 
-  const installBanner = <InstallBanner compact />;
-
   const list = error ? (
     <ErrorState error={error} onRetry={() => setReload((n) => n + 1)} compact />
   ) : !venues ? (
@@ -236,7 +233,6 @@ export default function Explore() {
           </div>
           <div className="explore-panel-list">
             <div className="bsheet-head">{header}</div>
-            {installBanner}
             {list}
           </div>
         </aside>
@@ -254,7 +250,6 @@ export default function Explore() {
         {banner}
       </div>
       <BottomSheet snap={snap} onSnap={setSnap} header={header}>
-        {installBanner}
         {list}
       </BottomSheet>
     </div>

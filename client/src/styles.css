@@ -878,7 +878,7 @@ button:focus:not(:focus-visible) {
 /* Bottom nav */
 .bottomnav {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   height: calc(var(--nav-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -4083,6 +4083,206 @@ button:focus:not(:focus-visible) {
 .install-steps li .icon {
   vertical-align: -2px;
   margin-right: 4px;
+  color: var(--muted);
+}
+
+/* Install nudge */
+.nudge {
+  position: fixed;
+  top: calc(12px + var(--safe-t));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(calc(100% - 24px), 440px);
+  padding: 10px 8px 10px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow-lg);
+  animation: nudge-in 420ms var(--ease-out);
+}
+.nudge-text {
+  flex: 1;
+  min-width: 0;
+}
+.nudge-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.nudge-sub {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@keyframes nudge-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@media (min-width: 960px) {
+  .nudge {
+    left: auto;
+    right: 20px;
+    transform: none;
+  }
+  @keyframes nudge-in {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Activity */
+.asummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  margin: 14px 0 4px;
+}
+.asummary-k {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.asummary-v {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.agroup {
+  margin-top: 18px;
+}
+.agroup-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 4px 8px;
+}
+.alist {
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.arow {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.arow.is-static {
+  cursor: default;
+}
+.arow:last-child {
+  border-bottom: 0;
+}
+.arow:not(.is-static):hover {
+  background: var(--surface-2);
+}
+.arow-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.arow-icon.is-car {
+  background: var(--green-soft);
+  color: var(--green-deep);
+}
+.arow-icon.is-ticket {
+  background: var(--amber-soft);
+  color: var(--amber-ink);
+}
+.arow-icon.is-credit {
+  background: var(--green-soft);
+  color: var(--green-deep);
+}
+.arow-icon.is-debit {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.arow-main {
+  min-width: 0;
+}
+.arow-title {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arow-sub {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arow-side {
+  text-align: right;
+}
+.arow-amt {
+  display: block;
+  font-weight: 700;
+}
+.arow-amt.is-credit {
+  color: var(--green-deep);
+}
+.arow-bal {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  margin-top: 2px;
+}
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+.detail-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+.detail-sub {
+  font-size: 13px;
   color: var(--muted);
 }
 

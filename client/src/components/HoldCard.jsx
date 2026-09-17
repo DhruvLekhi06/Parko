@@ -2,6 +2,7 @@ import { useNow } from '../hooks/useNow.js';
 import { countdown, distance, minutes, walkTime, clock, rupees } from '../lib/format.js';
 import { Button, Skeleton } from './Primitives.jsx';
 import { Icon } from './Icons.jsx';
+import { Barcode } from './Barcode.jsx';
 
 export function Countdown({ expiresAt }) {
   const now = useNow(1000, !!expiresAt);
@@ -54,6 +55,26 @@ export function RouteSteps({ route, loading, steps, title, reversed = false }) {
   );
 }
 
+export function Ticket({ hold, compact = false }) {
+  if (!hold) return null;
+  return (
+    <div className={`ticket ${compact ? 'is-compact' : ''}`}>
+      <div className="ticket-head">
+        <span>Show at the gate</span>
+        {hold.plate ? <span className="ticket-plate">{hold.plate}</span> : null}
+      </div>
+      <div className="ticket-code">{hold.code}</div>
+      <Barcode value={hold.code} height={compact ? 36 : 46} />
+      <div className="ticket-foot">
+        <span>{hold.venueName}</span>
+        <span>
+          Spot {hold.slotCode}, floor {hold.floorName}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function mapsUrl(lat, lng) {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
 }
@@ -88,10 +109,7 @@ export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExt
           <Icon name="ticket" size={14} /> {rupees(hold.holdFee)} hold, adjusted at exit
         </span>
       </div>
-      <div className="gatecode">
-        <div className="gatecode-k">Show at the gate</div>
-        <div className="gatecode-v">{hold.code}</div>
-      </div>
+      <Ticket hold={hold} />
       {showRoute ? <RouteSteps route={route} loading={routeLoading} title="Inside the car park" /> : null}
       <div className="rescard-actions">
         <Button variant="secondary" icon="navigate" onClick={() => window.open(mapsUrl(hold.venueLat, hold.venueLng), '_blank', 'noopener')} disabled={!!busy}>

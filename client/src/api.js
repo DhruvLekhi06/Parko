@@ -36,12 +36,21 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body } = {}) {
+export const ADMIN_KEY = 'spoton.admin';
+export const adminKey = () => {
+  try {
+    return window.localStorage.getItem(ADMIN_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+async function request(path, { method = 'GET', body, admin = false } = {}) {
   let res;
   try {
     res = await fetch(apiUrl(path), {
       method,
-      headers: { 'X-User-Id': deviceId(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { 'X-User-Id': deviceId(), ...(admin ? { 'X-Admin-Key': adminKey() } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (e) {
@@ -94,4 +103,14 @@ export const api = {
   wallet: () => request('/api/wallet'),
   topUp: (amount) => request('/api/wallet/topup', { method: 'POST', body: { amount } }),
   health: () => request('/api/health'),
+
+  admin: {
+    overview: () => request('/api/admin/overview', { admin: true }),
+    venues: () => request('/api/admin/venues', { admin: true }),
+    activity: () => request('/api/admin/activity', { admin: true }),
+    users: () => request('/api/admin/users', { admin: true }),
+    transactions: () => request('/api/admin/transactions', { admin: true }),
+    updateRate: (id, rate) => request(`/api/admin/venues/${encodeURIComponent(id)}`, { method: 'PUT', body: { rate }, admin: true }),
+    setSlot: (id, status) => request(`/api/admin/slots/${encodeURIComponent(id)}`, { method: 'POST', body: { status }, admin: true }),
+  },
 };

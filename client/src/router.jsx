@@ -31,6 +31,8 @@ const ROUTES = [
   ['floor', /^\/floor\/([^/]+)$/],
   ['car', /^\/car$/],
   ['profile', /^\/profile$/],
+  ['go', /^\/go\/([^/]+)$/],
+  ['admin', /^\/admin$/],
 ];
 
 export function useRoute() {

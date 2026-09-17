@@ -23,6 +23,9 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - `client/` React app
 
 ## Decisions (newest on top)
+- 2026-09-17: Venue CTA is "Book slot" (goes to the garage map with the best slot preselected, `?book=1`; BookSheet pays the fee from the wallet, shows the barcode ticket) and "Find parking" (`/go/:venueId`, route map + Start navigation via Google Maps + "I've arrived, pick a spot" → floor `?park=1` where the slot card's primary is "I've parked here"). No more auto-hold from the venue page.
+- 2026-09-17: Operator portal at `/admin` (link at the bottom of Profile). Key = `ADMIN_KEY` env (dev default `spoton-admin`), stored in localStorage `spoton.admin`, sent as `X-Admin-Key`. Tabs: Overview (tiles + by city), Venues (live table, per-venue rate editor), Activity (bookings + parking), Users, Transactions. API in `server/routes/admin.js`.
+- 2026-09-17: Gate ticket = `Ticket` component (HoldCard.jsx) with a Code 128 barcode drawn in SVG (`components/Barcode.jsx`, no dep).
 - 2026-09-17: LIGHT theme is final (Dhruv: "light mode itself, no ai ui, straight hci principle, clean ui"). Tokens: bg #f5f6f8, surface white, ink #111827, primary green #0e8a5f (white text passes AA), amber #d97706 (dark text on amber pins), semantic amber warning banner, no glass/blur/gradients, radius 12/10. Dark tokens are gone; the dark pass survives only as the glanceable layout (stat strip, count-first rows, two-option CTA).
 - 2026-09-16 (superseded 09-17 by light): UI direction = dark, map-first (Uber/Ola feel), glanceable, rebuilt directly on the live app (Dhruv: "not happy with the UI", picked dark map-first, rebuild directly). Tokens in `:root` are now dark; surfaces over the map are glass (`--glass` + backdrop blur); primary buttons are green with dark text (`--on-green`).
 - 2026-09-16: Map tiles = standard OSM tiles with a CSS invert/hue-rotate filter (`.tiles-dark`). CARTO dark basemaps now watermark "API KEY REQUIRED" without a key, so they were dropped.
@@ -39,6 +42,7 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - 2026-09-13: SQLite via node:sqlite instead of better-sqlite3 to avoid a native build; SSE instead of ws to avoid a dep.
 
 ## Gotchas
+- Chrome MCP could not type into the portal's password field (Chrome's password popup stole focus); setting `localStorage.spoton.admin` then reloading works for testing. Real users type normally.
 - History backfill: seeded 24h history expires when the server is off for a day; `backfillHistory()` on boot refills any venue with sparse history so sparklines never show "No history yet".
 - `db.js` uses AsyncLocalStorage so `tx(fn)` binds one client for every query inside fn; `notifyVenue` deliberately escapes the tx via setTimeout so SSE reads use the pool.
 - OSRM demo server: 2.5 s timeout, 30 s circuit breaker, 120 s cache; venues fall back to etaSource "estimate".

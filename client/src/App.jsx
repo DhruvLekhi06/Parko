@@ -9,6 +9,8 @@ import Floor from './screens/Floor.jsx';
 import MyCar from './screens/MyCar.jsx';
 import Profile from './screens/Profile.jsx';
 import Welcome from './screens/Welcome.jsx';
+import Go from './screens/Go.jsx';
+import Admin from './screens/Admin.jsx';
 import { navigate } from './router.jsx';
 
 function Shell() {
@@ -30,6 +32,8 @@ function Shell() {
   else if (route.name === 'floor') screen = <Floor key={route.params.id} id={route.params.id} query={route.query} />;
   else if (route.name === 'car') screen = <MyCar />;
   else if (route.name === 'profile') screen = <Profile />;
+  else if (route.name === 'go') screen = <Go key={route.params.id} id={route.params.id} />;
+  else if (route.name === 'admin') screen = <Admin />;
   else if (route.name === 'notfound')
     screen = (
       <div className="screen">

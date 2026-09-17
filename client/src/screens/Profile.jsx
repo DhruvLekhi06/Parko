@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useApp } from '../store.jsx';
+import { Link } from '../router.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
 import { Button, ErrorState, ScreenHeader, Skeleton, Toggle, EmptyState, Pill, IconButton } from '../components/Primitives.jsx';
 import { WalletSheet } from '../components/WalletSheet.jsx';
@@ -373,6 +374,11 @@ export default function Profile() {
             </div>
           )}
         </section>
+        <div className="admin-link">
+          <Link to="/admin" className="linkbtn">
+            Operator portal
+          </Link>
+        </div>
       </div>
       <WalletSheet
         open={walletOpen}

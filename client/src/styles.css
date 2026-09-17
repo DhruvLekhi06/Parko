@@ -3768,3 +3768,276 @@ button:focus:not(:focus-visible) {
   padding-inline: 12px;
 }
 
+/* Ticket */
+.ticket {
+  margin: 12px 16px 0;
+  padding: 12px 14px 10px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow);
+}
+.ticket-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ticket-plate {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.ticket-code {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.barcode {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+.barcode rect {
+  fill: var(--ink);
+}
+.ticket-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-2);
+  font-size: 12px;
+  color: var(--muted);
+}
+.ticket.is-compact .ticket-code {
+  font-size: 24px;
+}
+.receipt .ticket {
+  margin: 14px 0 0;
+}
+
+/* Find parking */
+.carmap.is-tall {
+  height: 280px;
+}
+.gocard {
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.gocard-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.gocard-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.gocard-free {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.gocard-free .num {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--green-deep);
+}
+.gocard-actions {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.goalt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+/* Operator portal */
+.admin .screen-inner {
+  max-width: 1100px;
+}
+.admin-gate {
+  max-width: 420px;
+  margin: 24px auto;
+}
+.admin-link {
+  margin: 28px 0 8px;
+  text-align: center;
+  font-size: 13px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.tab {
+  flex: 1;
+  min-width: max-content;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 160ms, color 160ms;
+}
+.tab.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+.tile {
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tile-k {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tile-v {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.tile.tone-green .tile-v {
+  color: var(--green-deep);
+}
+.tile.tone-amber .tile-v {
+  color: var(--amber-ink);
+}
+.tile.tone-red .tile-v {
+  color: var(--red-ink);
+}
+.tile-sub {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.tblwrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tbl th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tbl td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.tbl tr:last-child td {
+  border-bottom: 0;
+}
+.tbl tr.is-editing td {
+  background: var(--green-soft);
+}
+.tbl td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tbl-name {
+  font-weight: 600;
+}
+.tbl-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.admin-foot {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.rate-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  align-items: end;
+  margin-top: 8px;
+}
+.rate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Motion polish */
+.btn,
+.chip,
+.tab,
+.floorchip,
+.vitem,
+.bottomnav-item,
+.rail-item {
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+.btn:active:not(:disabled),
+.floorchip:active,
+.vitem:active {
+  transform: scale(0.985);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled),
+  .floorchip:active,
+  .vitem:active {
+    transform: none;
+  }
+}
+

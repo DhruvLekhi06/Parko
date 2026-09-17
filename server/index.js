@@ -13,6 +13,7 @@ import { router as floors } from './routes/floors.js';
 import { router as holds } from './routes/holds.js';
 import { router as sessions } from './routes/sessions.js';
 import { router as users, vehicles, wallet } from './routes/users.js';
+import { router as admin } from './routes/admin.js';
 
 const PORT = process.env.PORT || 3001;
 const DIST = path.join(ROOT, 'client', 'dist');
@@ -37,7 +38,7 @@ app.use((req, res, next) => {
   const allow = ORIGINS.includes('*') ? '*' : ORIGINS.includes(reqOrigin) ? reqOrigin : ORIGINS[0];
   res.setHeader('Access-Control-Allow-Origin', allow);
   res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id, X-Admin-Key');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -63,6 +64,7 @@ app.use('/api/sessions', sessions);
 app.use('/api/users', users);
 app.use('/api/vehicles', vehicles);
 app.use('/api/wallet', wallet);
+app.use('/api/admin', admin);
 app.use('/api', (req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: `No route ${req.method} ${req.originalUrl}` } }));
 
 if (HAS_BUILD) {

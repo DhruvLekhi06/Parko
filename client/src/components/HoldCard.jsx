@@ -79,10 +79,26 @@ export function mapsUrl(lat, lng) {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
 }
 
+export function refundNow(hold, now = Date.now()) {
+  if (!hold) return { amount: 0, tier: 'none' };
+  const created = new Date(hold.createdAt).getTime();
+  const expires = new Date(hold.expiresAt).getTime();
+  const p = hold.policy || { fullMinutes: 5, partialPct: 50, noRefundLastMinutes: 10 };
+  if (now - created <= p.fullMinutes * 60000) return { amount: hold.holdFee, tier: 'full' };
+  if (expires - now <= p.noRefundLastMinutes * 60000) return { amount: 0, tier: 'none' };
+  return { amount: Math.round((hold.holdFee * p.partialPct) / 100), tier: 'partial' };
+}
+
 export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExtend, onOpenFloor, busy, showRoute = true, distanceM, arrived }) {
-  const now = useNow(15000, !!hold);
+  const now = useNow(5000, !!hold);
   if (!hold) return null;
-  const refundable = now < new Date(hold.refundableUntil).getTime();
+  const refund = refundNow(hold, now);
+  const p = hold.policy || { fullMinutes: 5, partialPct: 50, noRefundLastMinutes: 10, maxMinutes: 240 };
+  const created = new Date(hold.createdAt).getTime();
+  const expires = new Date(hold.expiresAt).getTime();
+  const canAdd = expires - created + 15 * 60000 <= p.maxMinutes * 60000;
+  const canCut = expires - 15 * 60000 - now >= 5 * 60000;
+  const block = Math.round(hold.holdFee / Math.max(1, Math.round(hold.minutes / 15)));
   return (
     <div className="rescard">
       <div className="rescard-top">
@@ -98,16 +114,25 @@ export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExt
       </div>
       <div className="holdmeta">
         <span>
-          <Icon name="clock" size={14} /> Held until {clock(hold.expiresAt)}
+          <Icon name="ticket" size={14} /> {rupees(hold.holdFee)} booking, credited at exit
         </span>
         {distanceM != null ? (
           <span>
             <Icon name="navigate" size={14} /> {distance(distanceM)} away
           </span>
         ) : null}
-        <span>
-          <Icon name="ticket" size={14} /> {rupees(hold.holdFee)} hold, adjusted at exit
-        </span>
+      </div>
+      <div className="timebar">
+        <button type="button" className="timebtn" aria-label="15 minutes less" onClick={() => onExtend?.(-15)} disabled={!!busy || !canCut}>
+          <Icon name="minus" size={18} />
+        </button>
+        <div className="timebar-mid">
+          <div className="timebar-v">Until {clock(hold.expiresAt)}</div>
+          <div className="timebar-k">{hold.minutes} min hold, {rupees(block)} per 15 min</div>
+        </div>
+        <button type="button" className="timebtn" aria-label="15 minutes more" onClick={() => onExtend?.(15)} disabled={!!busy || !canAdd}>
+          <Icon name="plus" size={18} />
+        </button>
       </div>
       <Ticket hold={hold} />
       {showRoute ? <RouteSteps route={route} loading={routeLoading} title="Inside the car park" /> : null}
@@ -125,11 +150,11 @@ export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExt
         </Button>
       </div>
       <div className="rescard-foot">
-        <button type="button" className="linkbtn" onClick={onExtend} disabled={!!busy}>
-          Need more time? +15 min
-        </button>
+        <span className="rescard-policy">
+          {refund.tier === 'full' ? `Full refund if you cancel in the next ${Math.max(1, Math.ceil((created + p.fullMinutes * 60000 - now) / 60000))} min` : refund.tier === 'partial' ? `${p.partialPct}% back if you cancel now` : 'No refund this close to the end'}
+        </span>
         <button type="button" className="linkbtn is-danger" onClick={onCancel} disabled={!!busy}>
-          {refundable ? `Cancel, ${rupees(hold.holdFee)} refunded` : 'Cancel hold'}
+          {refund.amount > 0 ? `Cancel, ${rupees(refund.amount)} back` : 'Cancel booking'}
         </button>
       </div>
     </div>

@@ -84,7 +84,7 @@ function SlotCard({ slot, holdFee, etaMin, onHold, onParkHere, onClose, busy, is
               </>
             ) : (
               <>
-                Held until you arrive ({fmtMinutes(etaMin)} drive plus 15 min). Pay {rupees(holdFee)} now, credited at exit. Already parked here?{' '}
+                Hold it for 15, 30 or 60 min, {rupees(holdFee)} per 15 min, credited at exit. Already parked here?{' '}
                 <button type="button" className="linkbtn" onClick={onParkHere} disabled={!!busy}>
                   Start the timer
                 </button>
@@ -297,7 +297,7 @@ export default function Floor({ id, query }) {
       setSlotStatus(myHold.slotId, 'free');
       setHold(null);
       setWalletBalance(r?.walletBalance);
-      toast(r?.refunded ? `Hold released. ${rupees(r.refunded)} refunded.` : 'Hold released.');
+      toast(r?.refunded ? `Booking cancelled. ${rupees(r.refunded)} back.` : 'Booking cancelled.');
     } catch (e) {
       toast(e.message, { kind: 'error' });
       refreshActive();
@@ -324,12 +324,13 @@ export default function Floor({ id, query }) {
     }
   };
 
-  const extend = async () => {
+  const extend = async (delta = 15) => {
     if (!myHold) return;
     setBusy('extend');
     try {
-      const r = await api.extendHold(myHold.id, 15);
+      const r = await api.extendHold(myHold.id, delta);
       setHold(r?.hold ?? myHold);
+      setWalletBalance(r?.walletBalance);
     } catch (e) {
       toast(e.message, { kind: 'error' });
     } finally {
@@ -398,26 +399,27 @@ export default function Floor({ id, query }) {
               {card || (
                 <div className="hint">
                   <Icon name="info" size={18} />
-                  <span>Tap a green slot to hold it. The one marked "Best for you" is the closest free slot that matches your preferences.</span>
+                  <span>Tap a green slot to book it. "Best for you" is the closest free spot for you.</span>
                 </div>
               )}
               {floor ? (
-                <div className="rates" aria-label="Free right now">
-                  <div className="rate">
-                    <div className="rate-v num">{counts.free}</div>
-                    <div className="rate-k">free of {counts.total}</div>
+                <div className="stats is-grid2" aria-label="Free right now">
+                  <div className="stat">
+                    <div className="stat-k">Free</div>
+                    <div className="stat-v num">{counts.free}</div>
+                    <div className="stat-sub">of {counts.total}</div>
                   </div>
-                  <div className="rate">
-                    <div className="rate-v num">{counts.ev}</div>
-                    <div className="rate-k">EV free</div>
+                  <div className="stat">
+                    <div className="stat-k">EV free</div>
+                    <div className="stat-v num">{counts.ev}</div>
                   </div>
-                  <div className="rate">
-                    <div className="rate-v num">{counts.acc}</div>
-                    <div className="rate-k">accessible free</div>
+                  <div className="stat">
+                    <div className="stat-k">Accessible</div>
+                    <div className="stat-v num">{counts.acc}</div>
                   </div>
-                  <div className="rate">
-                    <div className="rate-v num">{slots.filter((s) => s.status === 'reserved').length}</div>
-                    <div className="rate-k">on hold</div>
+                  <div className="stat">
+                    <div className="stat-k">Booked</div>
+                    <div className="stat-v num">{slots.filter((s) => s.status === 'reserved').length}</div>
                   </div>
                 </div>
               ) : null}

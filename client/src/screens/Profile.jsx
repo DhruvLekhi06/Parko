@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { useApp } from '../store.jsx';
 import { Link, navigate } from '../router.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
-import { Button, ErrorState, ScreenHeader, Toggle, Pill, IconButton } from '../components/Primitives.jsx';
+import { Button, ErrorState, ScreenHeader, Toggle, Pill } from '../components/Primitives.jsx';
 import { AuthForm } from '../components/AuthForm.jsx';
 import { ISSUERS } from '../components/FastagForm.jsx';
 import { WalletSheet } from '../components/WalletSheet.jsx';
@@ -181,8 +181,12 @@ function VehicleRow({ v, onEdit, onRemove, onDefault }) {
         </div>
       </div>
       <div className="vehicle-actions">
-        <IconButton name="refresh" label="Edit vehicle" size="sm" onClick={onEdit} />
-        <IconButton name="close" label="Remove vehicle" size="sm" onClick={onRemove} />
+        <Button variant="ghost" size="sm" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button variant="ghost" size="sm" className="is-danger" onClick={onRemove}>
+          Remove
+        </Button>
       </div>
     </div>
   );

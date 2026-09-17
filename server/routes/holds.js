@@ -4,25 +4,21 @@ import { newId, gateCode, clampInt, ApiError } from '../util.js';
 import { setSlotStatus, expireHolds } from '../state.js';
 import { getHold, activeHold, formatHold } from '../records.js';
 import { credit, debit } from '../wallet.js';
-import { HOLD_REFUND_WINDOW_MIN } from '../fees.js';
+import { HOLD_OPTIONS, HOLD_BLOCK_MIN, HOLD_MAX_MIN, holdPrice, refundFor } from '../fees.js';
 import { currentUser, resolveVehicle, requireAccount } from './users.js';
 import { bestSlotForVenue } from './floors.js';
 import { startSession } from './sessions.js';
 
 export const router = Router();
 
-const GRACE_MIN = 15;
-const MAX_HOLD_MIN = 240;
 
 export async function cancelActiveHolds(userId, { refund } = {}) {
-  const rows = await many(`select h.id, h.slot_id, h.hold_fee, h.created_at, s.status as slot_status from holds h join slots s on s.id = h.slot_id where h.user_id = $1 and h.status = 'active'`, [userId]);
+  const rows = await many(`select h.id, h.slot_id, h.hold_fee, h.created_at, h.expires_at, s.status as slot_status from holds h join slots s on s.id = h.slot_id where h.user_id = $1 and h.status = 'active'`, [userId]);
   for (const h of rows) {
     await run(`update holds set status = 'cancelled' where id = $1`, [h.id]);
     if (h.slot_status === 'reserved') await setSlotStatus(h.slot_id, 'free');
-    const withinWindow = Date.now() - new Date(h.created_at).getTime() <= HOLD_REFUND_WINDOW_MIN * 60000;
-    if (h.hold_fee > 0 && (refund === true || (refund === 'window' && withinWindow))) {
-      await credit(userId, h.hold_fee, 'refund', { refType: 'hold', refId: h.id, note: 'Booking fee refunded' });
-    }
+    const amount = refund === true ? h.hold_fee : refund === 'policy' ? refundFor(h).amount : 0;
+    if (amount > 0) await credit(userId, amount, 'refund', { refType: 'hold', refId: h.id, note: 'Booking fee refunded' });
   }
   return rows;
 }
@@ -42,23 +38,19 @@ router.post('/', async (req, res) => {
   const own = await activeHold(user.id);
   const ownSlot = own && own.slot_id === slot.id;
   if (slot.status !== 'free' && !ownSlot) throw new ApiError(409, 'SLOT_NOT_FREE', 'Someone just took that spot');
-  const eta = clampInt(body.etaMinutes ?? body.minutes, 0, 180, 30);
-  const holdMinutes = Math.min(MAX_HOLD_MIN, Math.max(15, eta + GRACE_MIN));
-  const holdFee = venue.rate?.holdFee ?? 2000;
+  const minutes = Number(body.minutes);
+  if (!HOLD_OPTIONS.includes(minutes)) throw new ApiError(400, 'VALIDATION', `minutes must be one of ${HOLD_OPTIONS.join(', ')}`);
+  const holdFee = holdPrice(venue.rate, minutes);
+  const eta = clampInt(body.etaMinutes, 0, 180, 0);
   const vehicle = await resolveVehicle(user.id, body.vehicleId);
   const o = body.origin && Number.isFinite(Number(body.origin.lat)) ? { lat: Number(body.origin.lat), lng: Number(body.origin.lng) } : null;
-  let id = own?.id;
+  const id = newId('h');
   await tx(async () => {
-    if (ownSlot) {
-      await run(`update holds set expires_at = now() + ($1 || ' minutes')::interval, eta_minutes = $2 where id = $3`, [String(holdMinutes), eta, own.id]);
-      return;
-    }
     await cancelActiveHolds(user.id, { refund: true });
-    id = newId('h');
-    await debit(user.id, holdFee, 'hold_fee', { refType: 'hold', refId: id, note: `Booking at ${venue.name}` });
+    await debit(user.id, holdFee, 'hold_fee', { refType: 'hold', refId: id, note: `Booking at ${venue.name}, ${minutes} min` });
     await run(`insert into holds (id, slot_id, user_id, vehicle_id, status, expires_at, eta_minutes, hold_fee, code, origin_lat, origin_lng)
       values ($1,$2,$3,$4,'active', now() + ($5 || ' minutes')::interval, $6, $7, $8, $9, $10)`,
-      [id, slot.id, user.id, vehicle?.id || null, String(holdMinutes), eta, holdFee, gateCode(), o?.lat ?? null, o?.lng ?? null]);
+      [id, slot.id, user.id, vehicle?.id || null, String(minutes), eta, holdFee, gateCode(), o?.lat ?? null, o?.lng ?? null]);
     await setSlotStatus(slot.id, 'reserved');
   });
   const hold = formatHold(await getHold(id));
@@ -83,16 +75,27 @@ router.get('/active', async (req, res) => {
 });
 
 router.post('/:id/extend', async (req, res) => {
-  const user = await currentUser(req);
+  const user = requireAccount(await currentUser(req));
   const h = await getHold(req.params.id);
   if (!h || h.user_id !== user.id) throw new ApiError(404, 'HOLD_NOT_FOUND', `No hold ${req.params.id}`);
   if (h.status !== 'active') throw new ApiError(409, 'HOLD_NOT_ACTIVE', `Hold is ${h.status}`);
-  const extra = clampInt((req.body || {}).minutes, 5, 60, 15);
-  const maxExpiry = new Date(new Date(h.created_at).getTime() + MAX_HOLD_MIN * 60000);
-  const next = new Date(Math.min(maxExpiry.getTime(), new Date(h.expires_at).getTime() + extra * 60000));
-  await run(`update holds set expires_at = $1 where id = $2`, [next.toISOString(), h.id]);
+  const delta = Number((req.body || {}).minutes);
+  if (delta !== HOLD_BLOCK_MIN && delta !== -HOLD_BLOCK_MIN) throw new ApiError(400, 'VALIDATION', `minutes must be +${HOLD_BLOCK_MIN} or -${HOLD_BLOCK_MIN}`);
+  const venue = await one(`select rate, name from venues where id = $1`, [h.venue_id]);
+  const block = holdPrice(venue.rate, HOLD_BLOCK_MIN);
+  const created = new Date(h.created_at).getTime();
+  const expires = new Date(h.expires_at).getTime();
+  const next = expires + delta * 60000;
+  if (delta > 0 && next - created > HOLD_MAX_MIN * 60000) throw new ApiError(409, 'HOLD_MAX', `A booking can be held for at most ${HOLD_MAX_MIN / 60} hours`);
+  if (delta < 0 && next - Date.now() < 5 * 60000) throw new ApiError(409, 'HOLD_MIN', 'You cannot shorten a booking to under 5 minutes from now');
+  let balance;
+  await tx(async () => {
+    if (delta > 0) balance = await debit(user.id, block, 'hold_fee', { refType: 'hold', refId: h.id, note: `Booking extended, ${venue.name}` });
+    else balance = await credit(user.id, block, 'refund', { refType: 'hold', refId: h.id, note: `Booking shortened, ${venue.name}` });
+    await run(`update holds set expires_at = $1, hold_fee = hold_fee + $2 where id = $3`, [new Date(next).toISOString(), delta > 0 ? block : -block, h.id]);
+  });
   const hold = formatHold(await getHold(h.id));
-  res.json({ hold, reservation: hold });
+  res.json({ hold, reservation: hold, walletBalance: balance });
 });
 
 router.post('/:id/arrive', async (req, res) => {
@@ -106,17 +109,17 @@ router.delete('/:id', async (req, res) => {
   const h = await getHold(req.params.id);
   if (!h || h.user_id !== user.id) throw new ApiError(404, 'HOLD_NOT_FOUND', `No hold ${req.params.id}`);
   let refunded = 0;
+  let tier = 'none';
   if (h.status === 'active') {
     await tx(async () => {
-      const withinWindow = Date.now() - new Date(h.created_at).getTime() <= HOLD_REFUND_WINDOW_MIN * 60000;
+      const r = refundFor(h);
       await run(`update holds set status = 'cancelled' where id = $1`, [h.id]);
       if (h.slot_status === 'reserved') await setSlotStatus(h.slot_id, 'free');
-      if (withinWindow && h.hold_fee > 0) {
-        await credit(user.id, h.hold_fee, 'refund', { refType: 'hold', refId: h.id, note: 'Booking fee refunded' });
-        refunded = h.hold_fee;
-      }
+      if (r.amount > 0) await credit(user.id, r.amount, 'refund', { refType: 'hold', refId: h.id, note: r.tier === 'full' ? 'Booking fee refunded' : 'Booking fee refunded (50%)' });
+      refunded = r.amount;
+      tier = r.tier;
     });
   }
   const balance = (await one(`select wallet_balance from users where id = $1`, [user.id])).wallet_balance;
-  res.json({ ok: true, refunded, walletBalance: balance });
+  res.json({ ok: true, refunded, tier, walletBalance: balance });
 });

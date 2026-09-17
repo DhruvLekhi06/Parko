@@ -69,7 +69,7 @@ export default function MyCar() {
       const r = await api.cancelHold(hold.id);
       setHold(null);
       setWalletBalance(r?.walletBalance);
-      toast(r?.refunded ? `Hold released. ${rupees(r.refunded)} refunded to your wallet.` : 'Hold released.');
+      toast(r?.refunded ? `Booking cancelled. ${rupees(r.refunded)} back in your wallet.` : 'Booking cancelled. No refund this close to the end.');
     } catch (e) {
       toast(e.message, { kind: 'error' });
       refreshActive();
@@ -94,13 +94,14 @@ export default function MyCar() {
     }
   };
 
-  const extend = async () => {
+  const extend = async (delta = 15) => {
     if (!hold) return;
     setBusy('extend');
     try {
-      const r = await api.extendHold(hold.id, 15);
+      const r = await api.extendHold(hold.id, delta);
       setHold(r?.hold ?? hold);
-      toast(`Held until ${clock(r?.hold?.expiresAt)}.`);
+      setWalletBalance(r?.walletBalance);
+      toast(delta > 0 ? `Added 15 min, held until ${clock(r?.hold?.expiresAt)}.` : `Shortened, held until ${clock(r?.hold?.expiresAt)}. Fee refunded.`, { kind: 'success' });
     } catch (e) {
       toast(e.message, { kind: 'error' });
     } finally {
@@ -216,7 +217,7 @@ export default function MyCar() {
           </div>
         ) : null}
         <HoldCard hold={hold} showRoute={false} onCancel={cancel} onArrived={parked} onExtend={extend} onOpenFloor={() => navigate(`/floor/${encodeURIComponent(hold.floorId)}`)} busy={busy} distanceM={distanceToHoldM} arrived={arrived} />
-        <p className="feenote">{arrived ? 'You have arrived. Park in your spot, then tap "I\'ve parked" to start the timer.' : 'Drive over, show the code at the gate, park in your spot, then tap "I\'ve parked".'}</p>
+        <p className="feenote">{arrived ? 'You have arrived. Park in your spot, then tap "I\'ve parked" to start the timer.' : 'Show the code at the gate, park in your spot, then tap "I\'ve parked".'}</p>
       </div>
     );
   } else {

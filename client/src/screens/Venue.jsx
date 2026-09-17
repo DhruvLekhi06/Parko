@@ -81,7 +81,7 @@ function Body({ v, alts, hold, session }) {
         <div className="stat">
           <div className="stat-k">Hold</div>
           <div className="stat-v num">{rupees(v.holdFee)}</div>
-          <div className="stat-sub">credited at exit</div>
+          <div className="stat-sub">per 15 min, credited</div>
         </div>
       </section>
 
@@ -201,7 +201,7 @@ function Body({ v, alts, hold, session }) {
           <div className="holdcta-sub">
             {holdingHere
               ? `Booked ${hold.slotCode} until ${clock(hold.expiresAt)}. Gate code ${hold.code}.`
-              : `Book: pick your exact spot on the garage map, pay ${rupees(v.holdFee)} now, credited at exit. Find parking: get guided there and pick a free spot when you arrive.`}
+              : `Book: pick your spot on the garage map and hold it for 15, 30 or 60 min, ${rupees(v.holdFee)} per 15 min, credited at exit. Find parking: get guided there and pick a free spot on arrival.`}
           </div>
         </div>
       )}

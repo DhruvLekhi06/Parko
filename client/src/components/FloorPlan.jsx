@@ -287,7 +287,7 @@ export function FloorPlan({ floor, slots, selectedId, onSelectSlot, mySlotId, re
     if (!focusSlotId || !size.w || !size.h) return;
     const s = slots.find((x) => x.id === focusSlotId);
     if (!s) return;
-    const target = clamp(baseS * 2.6, baseS * MIN_K, baseS * MAX_K);
+    const target = clamp(Math.min(baseS * 2.6, 34 / U), baseS * MIN_K, baseS * MAX_K);
     const cx = (s.x + s.w / 2) * U;
     const cy = (s.y + s.h / 2) * U;
     setView(clampView({ s: target, x: size.w / 2 - cx * target, y: size.h * 0.42 - cy * target }));

@@ -12,18 +12,21 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
   const [step, setStep] = useState('confirm');
   const [result, setResult] = useState(null);
   const [short, setShort] = useState(null);
+  const [minutes, setMinutes] = useState(30);
 
   useEffect(() => {
     if (open) {
       setStep('confirm');
       setResult(null);
       setShort(null);
+      setMinutes(30);
     }
   }, [open]);
 
-  const fee = venue?.holdFee ?? 2000;
-  const eta = venue?.etaMin ?? 30;
-  const until = new Date(Date.now() + (eta + 15) * 60000).toISOString();
+  const block = venue?.holdFee ?? 2000;
+  const fee = block * (minutes / 15);
+  const eta = venue?.etaMin ?? 0;
+  const until = new Date(Date.now() + minutes * 60000).toISOString();
   const tag = user?.defaultVehicle?.fastagId || '';
   const balance = user?.walletBalance ?? 0;
 
@@ -35,7 +38,7 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
     setStep('processing');
     const wait = new Promise((r) => setTimeout(r, 900));
     try {
-      const [r] = await Promise.all([api.holdSpot({ slotId: slot.id, etaMinutes: eta, origin: position?.source === 'gps' ? { lat: position.lat, lng: position.lng } : undefined }), wait]);
+      const [r] = await Promise.all([api.holdSpot({ slotId: slot.id, minutes, etaMinutes: eta, origin: position?.source === 'gps' ? { lat: position.lat, lng: position.lng } : undefined }), wait]);
       setResult(r);
       onWallet?.(r.walletBalance);
       setStep('done');
@@ -74,20 +77,30 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
       {step === 'confirm' || step === 'insufficient' ? (
         <>
           <div className="pay-amount">
-            <div className="pay-amount-v num">{rupees(fee)}</div>
             <div className="pay-amount-k">
               {venue?.name}, spot {slot.code}, floor {floorName}
             </div>
+          </div>
+          <div className="durpick" role="radiogroup" aria-label="Hold for">
+            {[15, 30, 60].map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={minutes === m} className={`dur ${minutes === m ? 'is-active' : ''}`} onClick={() => setMinutes(m)}>
+                <span className="dur-min num">{m}</span>
+                <span className="dur-unit">min</span>
+                <span className="dur-price num">{rupees(block * (m / 15))}</span>
+              </button>
+            ))}
           </div>
           <div className="exit-rows">
             <div className="receipt-row">
               <span>Held until</span>
               <span>{clock(until)}</span>
             </div>
-            <div className="receipt-row">
-              <span>Your drive</span>
-              <span>{fmtMinutes(eta)}</span>
-            </div>
+            {eta ? (
+              <div className="receipt-row">
+                <span>Your drive</span>
+                <span className={eta > minutes ? 'tone-text-red' : ''}>{fmtMinutes(eta)}</span>
+              </div>
+            ) : null}
             <div className="receipt-row">
               <span>Booking fee</span>
               <span>{rupees(fee)}</span>
@@ -97,6 +110,12 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
               <span>- {rupees(fee)}</span>
             </div>
           </div>
+          {eta > minutes ? (
+            <div className="fastag-line is-short">
+              <Icon name="alert" size={18} />
+              <span>Your drive is longer than the hold. Pick more time, or add 15 min blocks later from My Car.</span>
+            </div>
+          ) : null}
           {existingHold ? (
             <div className="fastag-line">
               <Icon name="info" size={18} />

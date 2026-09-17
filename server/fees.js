@@ -19,3 +19,21 @@ export function exitCharge(rate, elapsedMinutes, holdFee = 0) {
 }
 
 export const HOLD_REFUND_WINDOW_MIN = 5;
+
+export const HOLD_BLOCK_MIN = 15;
+export const HOLD_OPTIONS = [15, 30, 60];
+export const HOLD_MAX_MIN = 240;
+export const HOLD_PARTIAL_PCT = 50;
+export const HOLD_NO_REFUND_LAST_MIN = 10;
+
+export const holdPrice = (rate, minutes) => Math.max(1, Math.round(minutes / HOLD_BLOCK_MIN)) * (rate?.holdFee ?? 2000);
+
+export function refundFor(hold, now = Date.now()) {
+  const created = new Date(hold.created_at || hold.createdAt).getTime();
+  const expires = new Date(hold.expires_at || hold.expiresAt).getTime();
+  const fee = hold.hold_fee ?? hold.holdFee ?? 0;
+  if (now - created <= HOLD_REFUND_WINDOW_MIN * 60000) return { amount: fee, tier: 'full' };
+  if (expires - now <= HOLD_NO_REFUND_LAST_MIN * 60000) return { amount: 0, tier: 'none' };
+  return { amount: Math.round((fee * HOLD_PARTIAL_PCT) / 100), tier: 'partial' };
+}
+

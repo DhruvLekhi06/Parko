@@ -1,6 +1,6 @@
 import { many, one } from './db.js';
 import { iso, parseJson } from './util.js';
-import { HOLD_REFUND_WINDOW_MIN } from './fees.js';
+import { HOLD_REFUND_WINDOW_MIN, HOLD_PARTIAL_PCT, HOLD_NO_REFUND_LAST_MIN, HOLD_MAX_MIN, refundFor } from './fees.js';
 
 const HOLD_SQL = `select h.*, s.code as slot_code, s.status as slot_status, f.id as floor_id, f.name as floor_name,
   v.id as venue_id, v.name as venue_name, v.lat as venue_lat, v.lng as venue_lng, v.address as venue_address, ve.plate as plate
@@ -25,7 +25,10 @@ export function formatHold(h) {
     venueId: h.venue_id, venueName: h.venue_name, venueLat: h.venue_lat, venueLng: h.venue_lng, venueAddress: h.venue_address,
     vehicleId: h.vehicle_id, plate: h.plate || '', status: h.status, createdAt: iso(createdAt), expiresAt: iso(h.expires_at),
     etaMinutes: h.eta_minutes, holdFee: h.hold_fee, code: h.code,
+    minutes: Math.round((new Date(h.expires_at).getTime() - createdAt.getTime()) / 60000),
     refundableUntil: iso(new Date(createdAt.getTime() + HOLD_REFUND_WINDOW_MIN * 60000)),
+    refund: refundFor(h),
+    policy: { fullMinutes: HOLD_REFUND_WINDOW_MIN, partialPct: HOLD_PARTIAL_PCT, noRefundLastMinutes: HOLD_NO_REFUND_LAST_MIN, maxMinutes: HOLD_MAX_MIN },
     origin: h.origin_lat != null ? { lat: h.origin_lat, lng: h.origin_lng } : null,
   };
 }

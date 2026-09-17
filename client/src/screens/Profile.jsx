@@ -5,6 +5,7 @@ import { Link } from '../router.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
 import { Button, ErrorState, ScreenHeader, Skeleton, Toggle, EmptyState, Pill, IconButton } from '../components/Primitives.jsx';
 import { WalletSheet } from '../components/WalletSheet.jsx';
+import { InstallBanner } from '../components/InstallBanner.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { rupees, formatPlate, dateLabel, clock, minutes as fmtMinutes, maskTag, VEHICLE_KINDS, TXN_LABELS } from '../lib/format.js';
 
@@ -373,6 +374,9 @@ export default function Profile() {
               ))}
             </div>
           )}
+        </section>
+        <section className="section" aria-label="Get the app">
+          <InstallBanner always />
         </section>
         <div className="admin-link">
           <Link to="/admin" className="linkbtn">

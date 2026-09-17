@@ -1,14 +1,14 @@
 {
   "name": "SpotOn",
   "short_name": "SpotOn",
-  "description": "Your spot, sorted. Live parking for Bengaluru malls and public places.",
+  "description": "Your spot, sorted. Live parking for malls, hospitals, stations and airports across India. Book a slot, drive in on your FASTag, walk straight back to your car.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0BB57A",
-  "background_color": "#F6F7F9",
+  "theme_color": "#0e8a5f",
+  "background_color": "#f5f6f8",
   "lang": "en",
   "categories": ["navigation", "travel", "utilities"],
   "icons": [

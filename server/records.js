@@ -33,7 +33,7 @@ export function formatHold(h) {
   };
 }
 
-export const elapsedMinutes = (startedAt, endedAt) => Math.max(0, Math.floor((new Date(endedAt || Date.now()) - new Date(startedAt)) / 60000));
+export const elapsedMinutes = (startedAt, endedAt) => Math.max(0, Math.ceil((new Date(endedAt || Date.now()) - new Date(startedAt)) / 60000));
 
 export function formatSession(p) {
   return {

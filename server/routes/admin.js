@@ -87,7 +87,10 @@ router.get('/users', async (req, res) => {
       (select count(*) from holds h where h.user_id = u.id)::int as holds,
       (select count(*) from sessions p where p.user_id = u.id)::int as sessions,
       (select coalesce(sum(-t.amount), 0) from transactions t where t.user_id = u.id and t.amount < 0)::int as spent
-    from users u left join vehicles ve on ve.user_id = u.id group by u.id order by u.created_at desc limit 200`);
+    from users u left join vehicles ve on ve.user_id = u.id
+    where u.email is not null or exists (select 1 from vehicles x where x.user_id = u.id) or exists (select 1 from holds x where x.user_id = u.id)
+      or exists (select 1 from sessions x where x.user_id = u.id) or exists (select 1 from transactions x where x.user_id = u.id)
+    group by u.id order by u.created_at desc limit 200`);
   res.json({ users: rows.map((r) => ({ id: r.id, name: r.name, phone: r.phone, walletBalance: r.wallet_balance, createdAt: r.created_at, prefs: r.prefs, vehicles: r.vehicles, holds: r.holds, sessions: r.sessions, spent: r.spent })) });
 });
 

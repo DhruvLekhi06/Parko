@@ -3,7 +3,7 @@ import { one, run, tx } from '../db.js';
 import { newId, ApiError } from '../util.js';
 import { setSlotStatus, expireHolds } from '../state.js';
 import { exitCharge } from '../fees.js';
-import { debit } from '../wallet.js';
+import { credit, debit } from '../wallet.js';
 import { getHold, activeHold, getSession, activeSession, userSessions, formatSession, elapsedMinutes } from '../records.js';
 import { currentUser, resolveVehicle, requireAccount } from './users.js';
 
@@ -59,6 +59,7 @@ async function endSession(user, p, method) {
   let receiptNo = null;
   await tx(async () => {
     if (method === 'fastag') balance = await debit(user.id, charge.due, 'parking_fee', { refType: 'session', refId: p.id, note: `Parking at ${p.venue_name}` });
+    if (charge.unused > 0) balance = await credit(user.id, charge.unused, 'refund', { refType: 'session', refId: p.id, note: `Unused booking credit, ${p.venue_name}` });
     const seq = (await one(`update receipt_seq set value = value + 1 where id = 1 returning value`)).value;
     receiptNo = `SP-${endedAt.getFullYear()}-${String(seq).padStart(6, '0')}`;
     await run(`update sessions set ended_at = $1, fee = $2, hold_credit = $3, paid = true, payment_method = $4, receipt_no = $5 where id = $6`,

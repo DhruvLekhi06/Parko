@@ -172,7 +172,7 @@ export default function MyCar() {
           </div>
         </div>
         <p className="feenote">
-          {graceLeft > 0 ? `Leave within ${graceLeft} min and it's free.` : `${rateLine(session.rate)}.${credit ? ` Your ${rupees(credit)} booking fee is credited.` : ''}`}
+          {graceLeft > 0 ? `Leave within ${graceLeft} min and it's free.` : `${rateLine(session.rate)}.${session.holdFee ? ` Your ${rupees(session.holdFee)} booking fee is credited at exit, anything unused comes back to your wallet.` : ''}`}
         </p>
         <div className="fastag-line">
           <Icon name="ticket" size={18} />
@@ -191,7 +191,7 @@ export default function MyCar() {
         <ExitSheet
           open={exitOpen}
           session={session}
-          quote={{ feeNow: fee, holdCredit: credit, dueNow: due }}
+          quote={{ feeNow: fee, holdCredit: credit, dueNow: due, unused: Math.max(0, (session.holdFee || 0) - credit) }}
           user={user}
           toast={toast}
           onWallet={setWalletBalance}

@@ -20,6 +20,7 @@ export function ExitSheet({ open, session, quote, user, onClose, onExited, onWal
 
   const fee = quote?.feeNow ?? 0;
   const credit = quote?.holdCredit ?? 0;
+  const unused = quote?.unused ?? 0;
   const due = quote?.dueNow ?? Math.max(0, fee - credit);
   const tag = user?.defaultVehicle?.fastagId || '';
   const balance = user?.walletBalance ?? 0;
@@ -79,8 +80,14 @@ export function ExitSheet({ open, session, quote, user, onClose, onExited, onWal
             </div>
             {credit > 0 ? (
               <div className="receipt-row is-credit">
-                <span>Hold fee already paid</span>
+                <span>Booking fee already paid</span>
                 <span>- {rupees(credit)}</span>
+              </div>
+            ) : null}
+            {unused > 0 ? (
+              <div className="receipt-row is-credit">
+                <span>Unused booking credit, back to wallet</span>
+                <span>+ {rupees(unused)}</span>
               </div>
             ) : null}
             <div className="receipt-row is-total">
@@ -94,7 +101,7 @@ export function ExitSheet({ open, session, quote, user, onClose, onExited, onWal
               {step === 'insufficient'
                 ? `Wallet has ${rupees(short?.balance ?? balance)}, you need ${rupees(short?.shortfall ?? 0)} more.`
                 : due === 0
-                  ? 'Inside the free window, nothing to pay. The gate opens on your FASTag.'
+                  ? `${credit > 0 ? 'Covered by your booking fee' : 'Inside the free window, nothing to pay'}. The gate opens on your FASTag.`
                   : tag
                     ? `Charged to FASTag ${maskTag(tag)}. Wallet ${rupees(balance)}.`
                     : `Charged to your SpotOn wallet, ${rupees(balance)}.`}
@@ -141,8 +148,14 @@ export function ExitSheet({ open, session, quote, user, onClose, onExited, onWal
             </div>
             {(result?.charge?.holdCredit ?? 0) > 0 ? (
               <div className="receipt-row is-credit">
-                <span>Hold fee credit</span>
+                <span>Booking fee credit</span>
                 <span>- {rupees(result.charge.holdCredit)}</span>
+              </div>
+            ) : null}
+            {(result?.charge?.unused ?? 0) > 0 ? (
+              <div className="receipt-row is-credit">
+                <span>Unused booking credit returned</span>
+                <span>+ {rupees(result.charge.unused)}</span>
               </div>
             ) : null}
             {(result?.charge?.due ?? 0) > 0 ? (

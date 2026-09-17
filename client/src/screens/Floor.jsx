@@ -69,7 +69,7 @@ function SlotCard({ slot, holdFee, etaMin, onHold, onParkHere, onClose, busy, is
               </Button>
             ) : (
               <Button variant="primary" size="lg" icon="ticket" onClick={onHold} disabled={!!busy}>
-                Book slot, {rupees(holdFee)}
+                Book slot, from {rupees(holdFee)}
               </Button>
             )}
           </div>

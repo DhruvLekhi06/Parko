@@ -132,8 +132,8 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
                 : step === 'insufficient'
                 ? `Wallet has ${rupees(short?.balance ?? balance)}, you need ${rupees(short?.shortfall ?? 0)} more.`
                 : tag
-                  ? `Paid from FASTag ${maskTag(tag)}. Wallet ${rupees(balance)}. Full refund if you cancel within 5 min.`
-                  : `Paid from your SpotOn wallet, ${rupees(balance)}. Full refund if you cancel within 5 min.`}
+                  ? `Paid from FASTag ${maskTag(tag)}, wallet ${rupees(balance)}. Full refund within 5 min of booking, half after that, none in the last 10 min.`
+                  : `Paid from your wallet, ${rupees(balance)}. Full refund within 5 min of booking, half after that, none in the last 10 min.`}
             </span>
           </div>
           <div style={{ marginTop: 16 }}>

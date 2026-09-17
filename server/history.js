@@ -58,7 +58,7 @@ export async function backfillHistory({ log = console.log } = {}) {
 }
 
 export async function sampleHistory() {
-  const ts = new Date(Math.floor(Date.now() / 60000) * 60000).toISOString();
+  const ts = new Date(Math.floor(Date.now() / 600000) * 600000).toISOString();
   const rows = await many(`select v.id, count(*) filter (where s.status = 'free')::int as free
     from venues v join floors f on f.venue_id = v.id join slots s on s.floor_id = f.id group by v.id`);
   if (!rows.length) return;

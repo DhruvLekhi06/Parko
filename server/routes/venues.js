@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
   const needle = typeof q === 'string' ? q.trim().toLowerCase() : '';
   const wantEv = !!ev && ev !== '0';
   const wantAccessible = !!accessible && accessible !== '0';
-  const rows = (await many(`select * from venues where published`))
+  const rows = (await many(`select id, name, type, city, address, lat, lng, opens, closes, is24h, amenities, rate, image, floors from venues where published`))
     .filter((v) => !type || v.type === type)
     .filter((v) => !city || v.city.toLowerCase() === String(city).toLowerCase())
     .filter((v) => {
@@ -29,19 +29,23 @@ router.get('/', async (req, res) => {
       return (!wantEv || am.includes('ev')) && (!wantAccessible || am.includes('accessible'));
     })
     .filter((v) => !needle || v.name.toLowerCase().includes(needle) || v.address.toLowerCase().includes(needle) || v.city.toLowerCase().includes(needle))
-    .map((v) => ({ v, straightM: haversineM(o.lat, o.lng, v.lat, v.lng) }))
-    .sort((a, b) => a.straightM - b.straightM);
+    .map((v) => ({ v, straightM: haversineM(o.lat, o.lng, v.lat, v.lng), rank: needle ? (v.name.toLowerCase().startsWith(needle) ? 0 : v.name.toLowerCase().includes(needle) ? 1 : 2) : 0 }))
+    .sort((a, b) => a.rank - b.rank || a.straightM - b.straightM);
   const nearestCity = rows[0]?.v.city || 'Bengaluru';
   const cities = [...rows.reduce((m, r) => m.set(r.v.city, (m.get(r.v.city) || 0) + 1), new Map())].map(([name, count]) => ({ name, count }));
   const scopeAll = !!city || !!needle || String(req.query.scope || '') === 'all';
   const scoped = scopeAll ? rows : rows.filter((r) => r.v.city === nearestCity);
-  const [floors, baseline] = await Promise.all([floorCounts(), trendBaseline()]);
+  const limit = Math.min(200, Math.max(10, Number(req.query.limit) || 80));
+  const page = scoped.slice(0, limit);
+  const ids = page.map((r) => r.v.id);
+  const [floors, baseline] = await Promise.all([floorCounts(ids), trendBaseline(ids)]);
   const byVenue = new Map();
   for (const f of floors) (byVenue.get(f.venueId) || byVenue.set(f.venueId, []).get(f.venueId)).push(f);
-  const near = scoped.filter((r) => r.straightM <= 60000).slice(0, 30).map((r) => ({ id: r.v.id, lat: r.v.lat, lng: r.v.lng }));
+  const near = page.filter((r) => r.straightM <= 60000).slice(0, 30).map((r) => ({ id: r.v.id, lat: r.v.lat, lng: r.v.lng }));
   const matrix = await driveMatrix(o, near);
-  const venues = scoped.map(({ v }) => formatVenue(v, o, byVenue.get(v.id) || [], baseline, matrix.get(v.id))).sort((a, b) => a.distanceM - b.distanceM);
-  res.json({ venues, origin: o, city: nearestCity, cities, etaSource: matrix.size ? 'road' : 'estimate' });
+  const order = new Map(page.map((r, i) => [r.v.id, i]));
+  const venues = page.map(({ v }) => formatVenue(v, o, byVenue.get(v.id) || [], baseline, matrix.get(v.id))).sort((a, b) => (needle ? order.get(a.id) - order.get(b.id) : a.distanceM - b.distanceM));
+  res.json({ venues, total: scoped.length, origin: o, city: nearestCity, cities, etaSource: matrix.size ? 'road' : 'estimate' });
 });
 
 router.get('/:id', async (req, res) => {

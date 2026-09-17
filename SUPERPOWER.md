@@ -23,6 +23,9 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - `client/` React app
 
 ## Decisions (newest on top)
+- 2026-09-17 (evening): Bengaluru coverage = every named mall, hospital, metro/rail station, stadium, multi-storey car park, attraction, cinema, bus station and aerodrome from OpenStreetMap (Overpass, bbox 12.72,77.35,13.30,77.90) via `server/import_bengaluru.js` (idempotent, `v_osm_<id>`, dedupes against seeded venues, localities derived from an embedded list so "koramangala" search works). Local DB now 1,601 venues / 175k slots. Overpass needs a User-Agent header (406 otherwise); `OVERPASS_FILE=path.json` replays a saved response.
+- 2026-09-17: `/api/venues` returns the nearest 80 (`limit` up to 200) + `total`; search (`q`) is citywide across all cities with name matches ranked first. Floor counts and trend baselines are computed only for the returned ids. History is sampled every 10 min (was 1 min) to keep the table small at 1,600 venues.
+- 2026-09-17: Booking UX: confirm sheet before +/-15 min (shows new end time and charge/refund), no drive-time anywhere except the Find parking navigation screen, policy shown as one muted line, no info boxes.
 - 2026-09-17 (late): Bookings are time based: 15/30/60 min picker, price = holdFee per 15 min block (₹20 → ₹20/₹40/₹80 at malls), credited at exit; +/-15 min stepper on the live booking (charges/refunds a block, max 4 h, cannot shorten under 5 min left). Refund tiers: 100% within 5 min of booking, 50% after, 0% in the last 10 min (`server/fees.js` refundFor, mirrored in `HoldCard.refundNow`). ETA no longer decides the hold window.
 - 2026-09-17: Onboarding is mandatory: splash → create account / log in (email + password) → link FASTag (plate, issuer bank, tag ID) → app. No guest browsing (needsOnboarding in `screens/Onboarding.jsx`).
 - 2026-09-17: Slide-to-confirm (`components/SlideToConfirm.jsx`) on pay/book/exit: rAF-driven drag, keyboard confirm, check-draw success animation, haptic.
@@ -68,6 +71,7 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - node:sqlite prints an ExperimentalWarning on Node 22; harmless.
 
 ## Current state
+- 2026-09-17 evening: full flow verified end to end on desktop + phone frame (splash → account → FASTag → book 30 min → slide to pay → top-up and book → ticket → +15 with confirm → parked → slide to exit → receipt → activity). Supabase project created by Dhruv (ref myitjwgthsdlldiojqvi, Tokyo); wiring pending his connection string (goes in gitignored `.env`, never in notes).
 - 2026-09-16: v0.2 running locally on Postgres: launch flow (hold ₹20 by venue or slot → drive with route → I've parked → exit auto-debit → receipt), profile with wallet/vehicles/FASTag, dark map-first UI. Verified in Chrome desktop + phone frames. Next: Phase 3 (realistic floor plan + 2.5D view, Google Maps provider when key exists), then hosting (Dhruv to create Supabase/Railway/Vercel projects).
 - 2026-09-13: v0.1 working model DONE and verified in Chrome (desktop + phone frame): explore map/list with live SSE counts, venue detail with sparkline, floor plan, hold slot + animated route + gate code, I've parked, My Car timer/fee, find my car (reversed route), pay & exit (UPI/card/cash) + receipt, profile + history, PWA install tags, first-launch welcome. `npm run dev` then http://localhost:5173 (LAN: http://<mac-ip>:5173 for the phone).
 - Next: Dhruv reviews on device and lists iteration requests; then the report (format TBD).

@@ -72,6 +72,7 @@ export default function Explore() {
   const [acc, setAcc] = useState(false);
   const [venues, setVenues] = useState(null);
   const [city, setCity] = useState('');
+  const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [snap, setSnap] = useState('half');
@@ -89,6 +90,7 @@ export default function Explore() {
       .then((d) => {
         if (!alive) return;
         setVenues(d?.venues || []);
+        setTotal(d?.total || 0);
         setCity(d?.city || '');
         setError(null);
       })
@@ -103,10 +105,10 @@ export default function Explore() {
 
   const firstId = venues?.[0]?.id || null;
   useEffect(() => {
-    if (!venues?.length || dq) return;
-    const pts = venues.slice(0, 4).map((v) => [v.lat, v.lng]);
-    if (position.source === 'gps') pts.push([position.lat, position.lng]);
-    setFit({ points: pts, key: `${position.source}-${firstId}-${city}`, maxZoom: 14 });
+    if (!venues?.length) return;
+    const pts = venues.slice(0, dq ? 8 : 4).map((v) => [v.lat, v.lng]);
+    if (position.source === 'gps' && !dq) pts.push([position.lat, position.lng]);
+    setFit({ points: pts, key: `${position.source}-${firstId}-${city}-${dq}`, maxZoom: dq ? 15 : 14 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstId, position.source, city, dq]);
 
@@ -190,8 +192,8 @@ export default function Explore() {
   const header = (
     <div className="row-between">
       <div>
-        <div className="sheet-title">{city ? `Near you, ${city}` : 'Near you'}</div>
-        <div className="sheet-sub">{venues ? `${venues.length} places, live counts` : 'Finding spots'}</div>
+        <div className="sheet-title">{dq ? `Results for "${dq}"` : city ? `Near you, ${city}` : 'Near you'}</div>
+        <div className="sheet-sub">{venues ? (dq ? `${venues.length} matches` : `Nearest ${venues.length} of ${total} places, search for any area`) : 'Finding spots'}</div>
       </div>
     </div>
   );

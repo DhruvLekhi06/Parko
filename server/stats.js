@@ -8,17 +8,21 @@ const FLOOR_COUNTS = `select f.id, f.name, f.level, f.venue_id, count(*)::int as
   from floors f join slots s on s.floor_id = f.id`;
 
 export async function floorCounts(venueId) {
-  const rows = venueId
-    ? await many(`${FLOOR_COUNTS} where f.venue_id = $1 group by f.id order by f.level`, [venueId])
-    : await many(`${FLOOR_COUNTS} group by f.id order by f.level`);
+  const rows = Array.isArray(venueId)
+    ? await many(`${FLOOR_COUNTS} where f.venue_id = any($1) group by f.id order by f.level`, [venueId])
+    : venueId
+      ? await many(`${FLOOR_COUNTS} where f.venue_id = $1 group by f.id order by f.level`, [venueId])
+      : await many(`${FLOOR_COUNTS} group by f.id order by f.level`);
   return rows.map((r) => ({ id: r.id, name: r.name, level: r.level, venueId: r.venue_id, total: r.total, free: r.free, freeEv: r.free_ev, freeAccessible: r.free_accessible }));
 }
 
 export async function trendBaseline(venueId) {
   const cutoff = new Date(Date.now() - 30 * 60000).toISOString();
-  const rows = venueId
-    ? await many(`select venue_id, free from availability_history where venue_id = $1 and ts <= $2 order by ts desc limit 1`, [venueId, cutoff])
-    : await many(`select distinct on (venue_id) venue_id, free from availability_history where ts <= $1 order by venue_id, ts desc`, [cutoff]);
+  const rows = Array.isArray(venueId)
+    ? await many(`select distinct on (venue_id) venue_id, free from availability_history where venue_id = any($1) and ts <= $2 and ts >= $3 order by venue_id, ts desc`, [venueId, cutoff, new Date(Date.now() - 3 * 3600000).toISOString()])
+    : venueId
+      ? await many(`select venue_id, free from availability_history where venue_id = $1 and ts <= $2 order by ts desc limit 1`, [venueId, cutoff])
+      : await many(`select distinct on (venue_id) venue_id, free from availability_history where ts <= $1 and ts >= $2 order by venue_id, ts desc`, [cutoff, new Date(Date.now() - 3 * 3600000).toISOString()]);
   return new Map(rows.map((r) => [r.venue_id, r.free]));
 }
 

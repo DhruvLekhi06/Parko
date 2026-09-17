@@ -56,5 +56,5 @@ export function startSimulation() {
   guarded(expireHolds, 'expiry')();
   if (SIM_ON) setInterval(guarded(tick, 'sim'), TICK_MS);
   setInterval(guarded(expireHolds, 'expiry'), 5000);
-  setInterval(guarded(sampleHistory, 'history'), 60000);
+  setInterval(guarded(sampleHistory, 'history'), 600000);
 }

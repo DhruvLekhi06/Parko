@@ -251,6 +251,7 @@ export default function Admin() {
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
   const [cityFilter, setCityFilter] = useState('');
+  const [venueQ, setVenueQ] = useState('');
   const timer = useRef(null);
 
   const load = useCallback(
@@ -310,7 +311,8 @@ export default function Admin() {
   const ov = data.overview;
   const venues = data.venues?.venues;
   const cities = ov?.cities?.map((c) => c.city) || [];
-  const shownVenues = venues?.filter((v) => !cityFilter || v.city === cityFilter);
+  const vq = venueQ.trim().toLowerCase();
+  const shownVenues = venues?.filter((v) => (!cityFilter || v.city === cityFilter) && (!vq || v.name.toLowerCase().includes(vq) || (v.address || '').toLowerCase().includes(vq))).slice(0, 300);
 
   let body;
   if (error) body = <ErrorState error={error} onRetry={() => load(tab)} compact />;
@@ -368,6 +370,10 @@ export default function Admin() {
       <Skeleton h={300} r={12} />
     ) : (
       <>
+        <div className="searchbar" style={{ marginBottom: 10 }}>
+          <Icon name="search" size={20} />
+          <input type="search" value={venueQ} onChange={(e) => setVenueQ(e.target.value)} placeholder="Filter venues by name or area" aria-label="Filter venues" />
+        </div>
         <div className="chiprow" style={{ marginBottom: 10 }}>
           <button type="button" className={`chip ${!cityFilter ? 'is-active' : ''}`} onClick={() => setCityFilter('')}>
             All
@@ -377,6 +383,9 @@ export default function Admin() {
               {c}
             </button>
           ))}
+        </div>
+        <div className="tbl-sub" style={{ marginBottom: 8 }}>
+          {shownVenues.length === 300 ? 'Showing the first 300, narrow it down with the filter.' : `${shownVenues.length} venues`}
         </div>
         <div className="tblwrap">
           <table className="tbl">

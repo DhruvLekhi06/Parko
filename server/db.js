@@ -7,7 +7,11 @@ const isLocal = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
 pg.types.setTypeParser(20, (v) => Number(v));
 pg.types.setTypeParser(1700, (v) => Number(v));
 
-export const pool = new pg.Pool({ connectionString: url, ssl: isLocal ? false : { rejectUnauthorized: false }, max: 8 });
+export const pool = new pg.Pool({ connectionString: url, ssl: isLocal ? false : { rejectUnauthorized: false }, max: 8, idleTimeoutMillis: 30000, connectionTimeoutMillis: 20000 });
+pool.on('connect', (client) => {
+  client.query(`set statement_timeout = '600s'`).catch(() => {});
+});
+pool.on('error', (err) => console.error('pg pool error:', err.message));
 const current = new AsyncLocalStorage();
 
 const conn = () => current.getStore() || pool;
@@ -33,7 +37,7 @@ export async function tx(fn) {
 }
 
 export async function migrate() {
-  await query(`
+  const ddl = `
 create table if not exists users (
   id text primary key,
   name text not null default '',
@@ -91,7 +95,8 @@ alter table venues add column if not exists published boolean not null default t
 alter table vehicles add column if not exists issuer text not null default '';
 update venues set rate = '{"freeMinutes":0,"firstHour":5000,"perHalfHour":3000,"dailyCap":60000,"holdFee":2000}'::jsonb where rate ? 'perAdditionalHour' or not (rate ? 'perHalfHour');
 insert into receipt_seq (id, value) values (1, 0) on conflict do nothing;
-`);
+`;
+  for (const stmt of ddl.split(';\n').map((x) => x.trim()).filter(Boolean)) await query(stmt);
 }
 
 export const isSeeded = async () => (await one(`select count(*)::int as c from venues`)).c > 0;

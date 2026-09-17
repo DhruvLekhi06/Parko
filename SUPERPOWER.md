@@ -53,6 +53,7 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - 2026-09-13: SQLite via node:sqlite instead of better-sqlite3 to avoid a native build; SSE instead of ws to avoid a dep.
 
 ## Gotchas
+- Supabase (prod DB, wired 2026-09-17): session pooler `aws-0-ap-northeast-1.pooler.supabase.com:5432`, user `postgres.myitjwgthsdlldiojqvi`, SSL. Password only in the gitignored `.env` (never here). Pooled connections take ~4 s to open and the role's statement_timeout is 2 min, so `db.js` sets `statement_timeout = 600s` per connection and runs the migration statement by statement. The local Postgres (`parko`) remains the fast dev DB: comment out DATABASE_URL in `.env` to use it.
 - Push: `gh auth switch -u DhruvLekhi06 && git push; gh auth switch -u DhruvStratnova` (the default active gh account has no access to DhruvLekhi06/Parko). First push done 2026-09-17.
 - Install prompt (`hooks/useInstall.js`, `components/InstallBanner.jsx`) only fires on https or localhost with the production build (`npm run build && npm start` → http://localhost:3001). On the LAN dev URL Android shows nothing; iOS gets the Add to Home Screen steps.
 - Chrome MCP could not type into the portal's password field (Chrome's password popup stole focus); setting `localStorage.spoton.admin` then reloading works for testing. Real users type normally.
@@ -72,6 +73,7 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - node:sqlite prints an ExperimentalWarning on Node 22; harmless.
 
 ## Current state
+- 2026-09-17 13:45: local app now runs against Supabase (`.env` DATABASE_URL), simulation and synthetic history off. Base 106 venues seeded; the 1,495-place Bengaluru import is running in the background (log in the session scratchpad). Next: Railway API + Vercel client deploy once Dhruv creates those projects.
 - 2026-09-17 evening: full flow verified end to end on desktop + phone frame (splash → account → FASTag → book 30 min → slide to pay → top-up and book → ticket → +15 with confirm → parked → slide to exit → receipt → activity). Supabase project created by Dhruv (ref myitjwgthsdlldiojqvi, Tokyo); wiring pending his connection string (goes in gitignored `.env`, never in notes).
 - 2026-09-16: v0.2 running locally on Postgres: launch flow (hold ₹20 by venue or slot → drive with route → I've parked → exit auto-debit → receipt), profile with wallet/vehicles/FASTag, dark map-first UI. Verified in Chrome desktop + phone frames. Next: Phase 3 (realistic floor plan + 2.5D view, Google Maps provider when key exists), then hosting (Dhruv to create Supabase/Railway/Vercel projects).
 - 2026-09-13: v0.1 working model DONE and verified in Chrome (desktop + phone frame): explore map/list with live SSE counts, venue detail with sparkline, floor plan, hold slot + animated route + gate code, I've parked, My Car timer/fee, find my car (reversed route), pay & exit (UPI/card/cash) + receipt, profile + history, PWA install tags, first-launch welcome. `npm run dev` then http://localhost:5173 (LAN: http://<mac-ip>:5173 for the phone).

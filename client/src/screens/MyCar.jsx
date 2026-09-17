@@ -11,7 +11,7 @@ import { ConfirmSheet } from '../components/ConfirmSheet.jsx';
 import { Button, ScreenHeader } from '../components/Primitives.jsx';
 import { LogoMark } from '../components/Logo.jsx';
 import { Icon } from '../components/Icons.jsx';
-import { rupees, clock, duration, feeFor, maskTag } from '../lib/format.js';
+import { rupees, clock, duration, feeFor, maskTag, rateLine } from '../lib/format.js';
 
 export default function MyCar() {
   const desktop = useDesktop();
@@ -172,11 +172,7 @@ export default function MyCar() {
           </div>
         </div>
         <p className="feenote">
-          {graceLeft > 0
-            ? `Leave within ${graceLeft} min and it's free.`
-            : session.rate
-              ? `${rupees(session.rate.firstHour)} for the first hour, then ${rupees(session.rate.perAdditionalHour)} an hour, capped at ${rupees(session.rate.dailyCap)} a day.${credit ? ` Your ${rupees(credit)} hold fee is credited.` : ''}`
-              : 'Fee updates every 30 seconds.'}
+          {graceLeft > 0 ? `Leave within ${graceLeft} min and it's free.` : `${rateLine(session.rate)}.${credit ? ` Your ${rupees(credit)} booking fee is credited.` : ''}`}
         </p>
         <div className="fastag-line">
           <Icon name="ticket" size={18} />

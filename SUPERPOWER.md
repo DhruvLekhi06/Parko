@@ -23,6 +23,7 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - `client/` React app
 
 ## Decisions (newest on top)
+- 2026-09-17: Standard parking price everywhere (Dhruv): ₹50 covers the first hour from the moment you park (no free window), then ₹30 for every started 30 min, ₹600/day cap; booking ₹20 per 15 min credited at exit. `server/fees.js` STANDARD_RATE + `computeFee`, mirrored in `client/src/lib/format.js` feeFor/rateLine; `db.js` migration rewrites any old rate JSON.
 - 2026-09-17 (evening): Bengaluru coverage = every named mall, hospital, metro/rail station, stadium, multi-storey car park, attraction, cinema, bus station and aerodrome from OpenStreetMap (Overpass, bbox 12.72,77.35,13.30,77.90) via `server/import_bengaluru.js` (idempotent, `v_osm_<id>`, dedupes against seeded venues, localities derived from an embedded list so "koramangala" search works). Local DB now 1,601 venues / 175k slots. Overpass needs a User-Agent header (406 otherwise); `OVERPASS_FILE=path.json` replays a saved response.
 - 2026-09-17: `/api/venues` returns the nearest 80 (`limit` up to 200) + `total`; search (`q`) is citywide across all cities with name matches ranked first. Floor counts and trend baselines are computed only for the returned ids. History is sampled every 10 min (was 1 min) to keep the table small at 1,600 venues.
 - 2026-09-17: Booking UX: confirm sheet before +/-15 min (shows new end time and charge/refund), no drive-time anywhere except the Find parking navigation screen, policy shown as one muted line, no info boxes.

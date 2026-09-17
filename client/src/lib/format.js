@@ -117,12 +117,16 @@ export function formatPlate(raw) {
 }
 
 export function feeFor(elapsedMinutes, rate) {
-  if (!rate) return 0;
-  const e = Math.max(0, elapsedMinutes);
-  if (e <= (rate.freeMinutes || 0)) return 0;
-  const extra = Math.ceil(Math.max(0, e - 60) / 60);
-  const fee = (rate.firstHour || 0) + extra * (rate.perAdditionalHour || 0);
-  return rate.dailyCap ? Math.min(fee, rate.dailyCap) : fee;
+  const r = { freeMinutes: 0, firstHour: 5000, perHalfHour: 3000, dailyCap: 60000, ...(rate || {}) };
+  const e = Math.max(0, Math.ceil(elapsedMinutes));
+  if (e <= (r.freeMinutes || 0)) return 0;
+  const fee = r.firstHour + Math.ceil(Math.max(0, e - 60) / 30) * r.perHalfHour;
+  return r.dailyCap ? Math.min(fee, r.dailyCap) : fee;
+}
+
+export function rateLine(rate) {
+  const r = { firstHour: 5000, perHalfHour: 3000, ...(rate || {}) };
+  return `${rupees(r.firstHour)} for the first hour, then ${rupees(r.perHalfHour)} every 30 min`;
 }
 
 export function walkMeters(distToEntrance) {

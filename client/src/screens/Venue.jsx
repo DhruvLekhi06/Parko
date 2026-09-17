@@ -7,7 +7,7 @@ import { VenueMap } from '../components/VenueMap.jsx';
 import { Sparkline } from '../components/Sparkline.jsx';
 import { Icon, TYPE_ICON } from '../components/Icons.jsx';
 import { Button, Count, ErrorState, FillBar, Pill, ScreenHeader, Skeleton } from '../components/Primitives.jsx';
-import { rupees, distance, minutes, levelInfo, TYPE_LABELS, AMENITY_LABELS, hoursLabel, clock } from '../lib/format.js';
+import { rupees, distance, minutes, levelInfo, TYPE_LABELS, AMENITY_LABELS, hoursLabel, clock, rateLine } from '../lib/format.js';
 
 const TREND = {
   rising: { icon: 'trendUp', label: 'Opening up', tone: 'green' },
@@ -158,12 +158,11 @@ function Body({ v, alts, hold, session }) {
         <div className="facts">
           <span>
             <Icon name="card" size={15} />
-            {rupees(v.rate?.firstHour)} first hour, then {rupees(v.rate?.perAdditionalHour)} an hour
+            {rateLine(v.rate)}
           </span>
           <span>
-            <Icon name="clock" size={15} />
-            {v.rate?.freeMinutes ? `${v.rate.freeMinutes} min free, ` : ''}
-            {rupees(v.rate?.dailyCap)} daily cap
+            <Icon name="ticket" size={15} />
+            Booking {rupees(v.holdFee)} per 15 min, credited when you exit
           </span>
         </div>
         {v.amenities?.length ? (

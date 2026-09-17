@@ -63,7 +63,7 @@ function VenueEditor({ venue, onSaved, toast }) {
   const [v, setV] = useState({
     name: venue.name, address: venue.address || '', opens: venue.opens || '10:00', closes: venue.closes || '23:00', is24h: !!venue.is24h, published: venue.published !== false,
     amenities: venue.amenities || [],
-    holdFee: venue.rate.holdFee / 100, firstHour: venue.rate.firstHour / 100, perAdditionalHour: venue.rate.perAdditionalHour / 100, dailyCap: venue.rate.dailyCap / 100, freeMinutes: venue.rate.freeMinutes,
+    holdFee: venue.rate.holdFee / 100, firstHour: venue.rate.firstHour / 100, perHalfHour: (venue.rate.perHalfHour ?? 3000) / 100, dailyCap: venue.rate.dailyCap / 100, freeMinutes: venue.rate.freeMinutes,
   });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setV((x) => ({ ...x, [k]: e.target.value }));
@@ -74,7 +74,7 @@ function VenueEditor({ venue, onSaved, toast }) {
       const out = await api.admin.updateVenue(venue.id, {
         name: v.name, address: v.address, opens: v.opens, closes: v.closes, is24h: v.is24h, published: v.published, amenities: v.amenities,
         rate: {
-          holdFee: Math.round(Number(v.holdFee) * 100), firstHour: Math.round(Number(v.firstHour) * 100), perAdditionalHour: Math.round(Number(v.perAdditionalHour) * 100),
+          holdFee: Math.round(Number(v.holdFee) * 100), firstHour: Math.round(Number(v.firstHour) * 100), perHalfHour: Math.round(Number(v.perHalfHour) * 100),
           dailyCap: Math.round(Number(v.dailyCap) * 100), freeMinutes: Math.round(Number(v.freeMinutes)),
         },
       });
@@ -103,7 +103,7 @@ function VenueEditor({ venue, onSaved, toast }) {
       <div className="rate-editor">
         <F k="holdFee" label="Booking fee ₹" inputMode="decimal" />
         <F k="firstHour" label="First hour ₹" inputMode="decimal" />
-        <F k="perAdditionalHour" label="Extra hour ₹" inputMode="decimal" />
+        <F k="perHalfHour" label="Every 30 min after ₹" inputMode="decimal" />
         <F k="dailyCap" label="Daily cap ₹" inputMode="decimal" />
         <F k="freeMinutes" label="Free minutes" inputMode="numeric" />
       </div>

@@ -89,6 +89,7 @@ alter table users add column if not exists last_login_at timestamptz;
 create unique index if not exists idx_users_email on users (lower(email)) where email is not null;
 alter table venues add column if not exists published boolean not null default true;
 alter table vehicles add column if not exists issuer text not null default '';
+update venues set rate = '{"freeMinutes":0,"firstHour":5000,"perHalfHour":3000,"dailyCap":60000,"holdFee":2000}'::jsonb where rate ? 'perAdditionalHour' or not (rate ? 'perHalfHour');
 insert into receipt_seq (id, value) values (1, 0) on conflict do nothing;
 `);
 }

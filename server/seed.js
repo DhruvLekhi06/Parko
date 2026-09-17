@@ -4,15 +4,8 @@ import { mulberry32, hashStr, SYNTHETIC } from './util.js';
 import { generateFloor } from './layout.js';
 import { synthHistory, insertHistory } from './history.js';
 
-export const RATES = {
-  mall: { freeMinutes: 15, firstHour: 4000, perAdditionalHour: 3000, dailyCap: 30000, holdFee: 2000 },
-  hospital: { freeMinutes: 30, firstHour: 3000, perAdditionalHour: 2000, dailyCap: 20000, holdFee: 1000 },
-  metro: { freeMinutes: 10, firstHour: 2000, perAdditionalHour: 1000, dailyCap: 10000, holdFee: 1000 },
-  rail: { freeMinutes: 10, firstHour: 2000, perAdditionalHour: 1000, dailyCap: 10000, holdFee: 1000 },
-  stadium: { freeMinutes: 10, firstHour: 5000, perAdditionalHour: 5000, dailyCap: 50000, holdFee: 3000 },
-  airport: { freeMinutes: 7, firstHour: 12000, perAdditionalHour: 8000, dailyCap: 80000, holdFee: 5000 },
-  public: { freeMinutes: 10, firstHour: 2000, perAdditionalHour: 2000, dailyCap: 15000, holdFee: 1000 },
-};
+const STD = { freeMinutes: 0, firstHour: 5000, perHalfHour: 3000, dailyCap: 60000, holdFee: 2000 };
+export const RATES = { mall: STD, hospital: STD, metro: STD, rail: STD, stadium: STD, airport: STD, public: STD };
 export const HOURS = {
   mall: ['10:00', '23:00', false], hospital: ['00:00', '23:59', true], metro: ['05:00', '23:30', false], rail: ['00:00', '23:59', true],
   stadium: ['06:00', '22:00', false], airport: ['00:00', '23:59', true], public: ['07:00', '23:00', false],

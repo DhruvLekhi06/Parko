@@ -10,7 +10,7 @@ Single demo user, id `demo` (no auth). Client sends `X-User-Id: demo` on every r
 - `venues` (id, name, type, address, lat, lng, opens, closes, is24h, amenities JSON, rate JSON, image (color/emoji token), floors count)
   - `type` in: `mall | hospital | metro | rail | stadium | airport | public`
   - `amenities` list from: `ev, accessible, covered, cctv, valet, restroom, 24x7, carwash`
-  - `rate`: `{ freeMinutes, firstHour, perAdditionalHour, dailyCap }` in paise
+  - `rate`: `{ freeMinutes, firstHour, perHalfHour, dailyCap, holdFee }` in paise (standard: 0, 5000, 3000, 60000, 2000)
 - `floors` (id, venue_id, name e.g. "B2", level int e.g. -2, width, height, layout JSON: entrances, lifts, lanes, pillars, zones)
 - `slots` (id, floor_id, code e.g. "B1-042", x, y, w, h, type `standard|ev|accessible`, status `free|occupied|reserved`, dist_to_entrance (grid units), updated_at)
 - `reservations` (id, slot_id, user_id, status `active|cancelled|expired|converted`, created_at, expires_at)
@@ -48,7 +48,7 @@ Returns venues sorted by distance. `lat/lng` optional (default 12.9716, 77.5946)
   "lat": 13.0110, "lng": 77.5551, "distanceM": 4200, "etaMin": 14,
   "opens": "10:00", "closes": "23:00", "is24h": false, "isOpen": true,
   "amenities": ["ev","accessible","covered","cctv"],
-  "rate": { "freeMinutes": 15, "firstHour": 4000, "perAdditionalHour": 3000, "dailyCap": 30000 },
+  "rate": { "freeMinutes": 0, "firstHour": 5000, "perHalfHour": 3000, "dailyCap": 60000, "holdFee": 2000 },
   "total": 320, "free": 61, "freeEv": 3, "freeAccessible": 2,
   "occupancy": 0.81, "level": "filling",
   "trend": "rising",
@@ -100,7 +100,7 @@ Starts a parking session ("I've parked"). Marks the slot occupied, marks reserva
 Ends the session, computes fee, frees the slot. Returns `{ "session": {..., "endedAt", "fee", "paid": true, "paymentMethod"} , "receiptNo": "SP-2026-000123" }`.
 ### `GET /api/sessions` -> `{ "sessions": [...] }` newest first (history), each with `durationMinutes`.
 
-Fee rule: `elapsed <= freeMinutes` -> 0. Else `firstHour + ceil(max(0, elapsed - 60) / 60) * perAdditionalHour`, capped at `dailyCap` per 24 h.
+Fee rule (standard, 2026-09-17): `firstHour` (₹50) covers the first 60 min from parking, then `perHalfHour` (₹30) for every started 30 min, capped at `dailyCap` per 24 h. Booking fee `holdFee` (₹20 per 15 min) is credited against the parking fee at exit.
 
 ### `GET /api/users/me` / `PUT /api/users/me` body `{ name?, plate?, prefs? }`
 ### `GET /api/health` -> `{ "ok": true, "venues": 24, "slots": 2600, "uptimeS": 12 }`

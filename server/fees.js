@@ -1,12 +1,15 @@
+export const STANDARD_RATE = { freeMinutes: 0, firstHour: 5000, perHalfHour: 3000, dailyCap: 60000, holdFee: 2000 };
+
 export function computeFee(rate, elapsedMinutes) {
-  const elapsed = Math.max(0, Math.floor(elapsedMinutes));
-  if (elapsed <= rate.freeMinutes) return 0;
+  const r = { ...STANDARD_RATE, ...(rate || {}) };
+  const elapsed = Math.max(0, Math.ceil(elapsedMinutes));
+  if (elapsed <= (r.freeMinutes || 0)) return 0;
   let fee = 0;
   let remaining = elapsed;
   while (remaining > 0) {
     const chunk = Math.min(remaining, 1440);
-    const chunkFee = rate.firstHour + Math.ceil(Math.max(0, chunk - 60) / 60) * rate.perAdditionalHour;
-    fee += Math.min(chunkFee, rate.dailyCap);
+    const chunkFee = r.firstHour + Math.ceil(Math.max(0, chunk - 60) / 30) * r.perHalfHour;
+    fee += r.dailyCap ? Math.min(chunkFee, r.dailyCap) : chunkFee;
     remaining -= chunk;
   }
   return fee;

@@ -104,7 +104,7 @@ router.put('/venues/:id', async (req, res) => {
   if (!v) throw new ApiError(404, 'VENUE_NOT_FOUND', `No venue ${req.params.id}`);
   const body = req.body || {};
   const rate = { ...parseJson(v.rate, {}) };
-  for (const k of ['freeMinutes', 'firstHour', 'perAdditionalHour', 'dailyCap', 'holdFee']) {
+  for (const k of ['freeMinutes', 'firstHour', 'perHalfHour', 'dailyCap', 'holdFee']) {
     if (body.rate?.[k] === undefined) continue;
     const n = Number(body.rate[k]);
     if (!Number.isInteger(n) || n < 0 || n > 10000000) throw new ApiError(400, 'VALIDATION', `${k} must be a whole number of paise (or minutes)`);

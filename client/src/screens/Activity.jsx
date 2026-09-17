@@ -116,6 +116,7 @@ function Detail({ it, user, onClose }) {
         ['Duration', fmtMinutes(it.durationMinutes)],
         ['Parking fee', rupees(it.fee)],
         ...(it.holdCredit ? [['Booking credit', `- ${rupees(it.holdCredit)}`]] : []),
+        ...(it.endedAt && it.holdFee > (it.holdCredit || 0) ? [['Unused credit returned', `+ ${rupees(it.holdFee - (it.holdCredit || 0))}`]] : []),
         ['Paid', it.endedAt ? rupees(Math.max(0, it.fee - (it.holdCredit || 0))) : 'At exit'],
         ...(it.paymentMethod ? [['Via', it.paymentMethod === 'fastag' ? `FASTag ${maskTag(user?.defaultVehicle?.fastagId || '')}` : it.paymentMethod]] : []),
         ...(it.receiptNo ? [['Receipt', it.receiptNo]] : []),

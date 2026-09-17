@@ -25,10 +25,10 @@ function FloorTabs({ floors, activeId }) {
   );
 }
 
-function SlotCard({ slot, holdFee, etaMin, onHold, onParkHere, onClose, busy, isBest, parkMode }) {
+function SlotCard({ slot, holdFee, etaMin, onHold, onParkHere, onClose, busy, isBest, parkMode, mine }) {
   const meters = walkMeters(slot.distToEntrance);
   const free = slot.status === 'free';
-  const note = slot.status === 'occupied' ? 'Taken right now. Pick a green one.' : slot.status === 'reserved' ? 'Held by another driver for now.' : null;
+  const note = slot.status === 'occupied' ? 'Taken right now. Pick a green one.' : slot.status === 'reserved' ? (mine ? 'Booked by you. Your ticket is in My Car.' : 'Held by another driver for now.') : null;
   return (
     <div className="slotcard">
       <div className="slotcard-head">
@@ -263,12 +263,18 @@ export default function Floor({ id, query }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floor?.id, bookMode]);
 
+  const onHeld = (r) => {
+    const h = r?.hold;
+    if (!h) return;
+    setHold(h);
+    setSlotStatus(h.slotId, 'reserved');
+  };
+
   const onBooked = (r) => {
     const h = r?.hold;
     setBooking(null);
     if (!h) return;
-    setHold(h);
-    setSlotStatus(h.slotId, 'reserved');
+    onHeld(r);
     setSelectedId(null);
     toast(`${h.slotCode} is booked until ${new Date(h.expiresAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}.`, { kind: 'success' });
   };
@@ -352,7 +358,7 @@ export default function Floor({ id, query }) {
   let card = null;
   if (findMode) card = <FindCard session={session} route={route} loading={routeLoading} onBack={() => navigate('/car')} />;
   else if (myHold) card = <HoldCard hold={myHold} route={route} routeLoading={routeLoading} onCancel={cancel} onArrived={parked} onExtend={(d) => setPendingDelta(d)} busy={busy} />;
-  else if (slot) card = <SlotCard slot={slot} holdFee={venue?.holdFee ?? 2000} etaMin={venue?.etaMin ?? 30} onHold={() => setBooking(slot)} onParkHere={parkHere} onClose={() => setSelectedId(null)} busy={busy} isBest={slot.id === floor?.recommendedSlotId} parkMode={parkMode} />;
+  else if (slot) card = <SlotCard slot={slot} holdFee={venue?.holdFee ?? 2000} etaMin={venue?.etaMin ?? 30} onHold={() => setBooking(slot)} onParkHere={parkHere} onClose={() => setSelectedId(null)} busy={busy} isBest={slot.id === floor?.recommendedSlotId} parkMode={parkMode} mine={activeHold?.slotId === slot.id} />;
 
   const otherHold =
     activeHold && activeHold.floorId !== id ? (
@@ -397,6 +403,7 @@ export default function Floor({ id, query }) {
       onWallet={setWalletBalance}
       onClose={() => setBooking(null)}
       onBooked={onBooked}
+      onHeld={onHeld}
     />
     </>
   );

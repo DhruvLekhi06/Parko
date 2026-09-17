@@ -7,7 +7,7 @@ import { Icon } from './Icons.jsx';
 import { Ticket } from './HoldCard.jsx';
 import { useApp } from '../store.jsx';
 
-export function BookSheet({ open, slot, floorName, venue, user, position, existingHold, onClose, onBooked, onWallet, toast }) {
+export function BookSheet({ open, slot, floorName, venue, user, position, existingHold, onClose, onBooked, onHeld, onWallet, toast }) {
   const { openAuth } = useApp();
   const [step, setStep] = useState('confirm');
   const [result, setResult] = useState(null);
@@ -39,6 +39,7 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
     try {
       const [r] = await Promise.all([api.holdSpot({ slotId: slot.id, minutes }), wait]);
       setResult(r);
+      onHeld?.(r);
       onWallet?.(r.walletBalance);
       setStep('done');
     } catch (e) {

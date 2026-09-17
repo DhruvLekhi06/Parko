@@ -129,6 +129,11 @@ export function rateLine(rate) {
   return `${rupees(r.firstHour)} for the first hour, then ${rupees(r.perHalfHour)} every 30 min`;
 }
 
+export function locality(address) {
+  const parts = String(address || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return parts[parts.length - 1] || '';
+}
+
 export function walkMeters(distToEntrance) {
   return Math.round((distToEntrance || 0) * 2.5);
 }

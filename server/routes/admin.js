@@ -24,7 +24,8 @@ router.get('/overview', async (req, res) => {
     (select count(*) from slots where status = 'reserved')::int as reserved,
     (select count(*) from holds where status = 'active')::int as active_holds,
     (select count(*) from sessions where ended_at is null)::int as active_sessions,
-    (select count(*) from users)::int as users,
+    (select count(*) from users u where u.email is not null or exists (select 1 from vehicles x where x.user_id = u.id) or exists (select 1 from holds x where x.user_id = u.id)
+      or exists (select 1 from sessions x where x.user_id = u.id) or exists (select 1 from transactions x where x.user_id = u.id))::int as users,
     (select coalesce(sum(-amount), 0) from transactions where amount < 0 and created_at >= ${IST_DAY})::int as revenue_today,
     (select coalesce(sum(-amount), 0) from transactions where kind = 'hold_fee' and created_at >= ${IST_DAY})::int as hold_revenue_today,
     (select coalesce(sum(-amount), 0) from transactions where kind = 'parking_fee' and created_at >= ${IST_DAY})::int as parking_revenue_today,

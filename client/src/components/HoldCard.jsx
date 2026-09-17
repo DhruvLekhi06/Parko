@@ -1,5 +1,5 @@
 import { useNow } from '../hooks/useNow.js';
-import { countdown, distance, minutes, walkTime, clock, rupees } from '../lib/format.js';
+import { countdown, distance, walkTime, clock, rupees } from '../lib/format.js';
 import { Button, Skeleton } from './Primitives.jsx';
 import { Icon } from './Icons.jsx';
 import { Barcode } from './Barcode.jsx';
@@ -48,7 +48,6 @@ export function RouteSteps({ route, loading, steps, title, reversed = false }) {
         <div className="steps-meta">
           <span>{distance(meters)}</span>
           {walk != null ? <span>{reversed ? walkTime(meters) : `${Math.max(1, Math.round(walk / 60))} min walk`}</span> : null}
-          {!reversed && route?.driveSeconds != null ? <span>{minutes(Math.max(1, Math.round(route.driveSeconds / 60)))} drive</span> : null}
         </div>
       ) : null}
     </>

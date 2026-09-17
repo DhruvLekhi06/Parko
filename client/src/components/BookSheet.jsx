@@ -4,8 +4,10 @@ import { rupees, clock, minutes as fmtMinutes, maskTag } from '../lib/format.js'
 import { Button, Sheet } from './Primitives.jsx';
 import { Icon } from './Icons.jsx';
 import { Ticket } from './HoldCard.jsx';
+import { useApp } from '../store.jsx';
 
 export function BookSheet({ open, slot, floorName, venue, user, position, existingHold, onClose, onBooked, onWallet, toast }) {
+  const { openAuth } = useApp();
   const [step, setStep] = useState('confirm');
   const [result, setResult] = useState(null);
   const [short, setShort] = useState(null);
@@ -25,6 +27,10 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
   const balance = user?.walletBalance ?? 0;
 
   const book = async () => {
+    if (user?.isGuest) {
+      openAuth(() => book());
+      return;
+    }
     setStep('processing');
     const wait = new Promise((r) => setTimeout(r, 900));
     try {
@@ -101,7 +107,9 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
           <div className={`fastag-line ${step === 'insufficient' ? 'is-short' : ''}`}>
             <Icon name={step === 'insufficient' ? 'alert' : 'ticket'} size={18} />
             <span>
-              {step === 'insufficient'
+              {user?.isGuest
+                ? 'You will create an account first, then pay from your wallet.'
+                : step === 'insufficient'
                 ? `Wallet has ${rupees(short?.balance ?? balance)}, you need ${rupees(short?.shortfall ?? 0)} more.`
                 : tag
                   ? `Paid from FASTag ${maskTag(tag)}. Wallet ${rupees(balance)}. Full refund if you cancel within 5 min.`

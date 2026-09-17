@@ -4,6 +4,7 @@ import { useRoute } from './router.jsx';
 import { BottomNav, Rail } from './components/Nav.jsx';
 import { LivePill, Toasts, EmptyState, ErrorBoundary } from './components/Primitives.jsx';
 import { InstallNudge } from './components/InstallNudge.jsx';
+import { AuthSheet } from './components/AuthSheet.jsx';
 import Explore from './screens/Explore.jsx';
 import Venue from './screens/Venue.jsx';
 import Floor from './screens/Floor.jsx';
@@ -59,6 +60,7 @@ function Shell() {
       <Toasts />
       <LivePill />
       <InstallNudge hidden={!welcomed || route.name === 'admin'} />
+      <AuthSheet />
       {!welcomed ? <Welcome /> : null}
     </div>
   );

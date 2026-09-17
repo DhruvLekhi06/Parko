@@ -83,6 +83,11 @@ create index if not exists idx_transactions_user on transactions(user_id, create
 create table if not exists availability_history (
   venue_id text not null references venues(id) on delete cascade, ts timestamptz not null, free integer not null, primary key (venue_id, ts));
 create table if not exists receipt_seq (id integer primary key, value integer not null);
+alter table users add column if not exists email text;
+alter table users add column if not exists password_hash text;
+alter table users add column if not exists last_login_at timestamptz;
+create unique index if not exists idx_users_email on users (lower(email)) where email is not null;
+alter table venues add column if not exists published boolean not null default true;
 insert into receipt_seq (id, value) values (1, 0) on conflict do nothing;
 `);
 }

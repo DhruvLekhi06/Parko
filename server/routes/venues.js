@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
   const needle = typeof q === 'string' ? q.trim().toLowerCase() : '';
   const wantEv = !!ev && ev !== '0';
   const wantAccessible = !!accessible && accessible !== '0';
-  const rows = (await many(`select * from venues`))
+  const rows = (await many(`select * from venues where published`))
     .filter((v) => !type || v.type === type)
     .filter((v) => !city || v.city.toLowerCase() === String(city).toLowerCase())
     .filter((v) => {
@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const row = await one(`select * from venues where id = $1`, [req.params.id]);
+  const row = await one(`select * from venues where id = $1 and published`, [req.params.id]);
   if (!row) throw new ApiError(404, 'VENUE_NOT_FOUND', `No venue ${req.params.id}`);
   const o = origin(req.query);
   const [floors, baseline, matrix, history] = await Promise.all([

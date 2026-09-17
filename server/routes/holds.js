@@ -5,7 +5,7 @@ import { setSlotStatus, expireHolds } from '../state.js';
 import { getHold, activeHold, formatHold } from '../records.js';
 import { credit, debit } from '../wallet.js';
 import { HOLD_REFUND_WINDOW_MIN } from '../fees.js';
-import { currentUser, resolveVehicle } from './users.js';
+import { currentUser, resolveVehicle, requireAccount } from './users.js';
 import { bestSlotForVenue } from './floors.js';
 import { startSession } from './sessions.js';
 
@@ -28,7 +28,7 @@ export async function cancelActiveHolds(userId, { refund } = {}) {
 }
 
 router.post('/', async (req, res) => {
-  const user = await currentUser(req);
+  const user = requireAccount(await currentUser(req));
   const body = req.body || {};
   await expireHolds();
   let slot = body.slotId ? await one(`select s.*, f.venue_id from slots s join floors f on f.id = s.floor_id where s.id = $1`, [String(body.slotId)]) : null;

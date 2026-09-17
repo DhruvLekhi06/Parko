@@ -5,7 +5,7 @@ import { setSlotStatus, expireHolds } from '../state.js';
 import { exitCharge } from '../fees.js';
 import { debit } from '../wallet.js';
 import { getHold, activeHold, getSession, activeSession, userSessions, formatSession, elapsedMinutes } from '../records.js';
-import { currentUser, resolveVehicle } from './users.js';
+import { currentUser, resolveVehicle, requireAccount } from './users.js';
 
 export const router = Router();
 
@@ -36,7 +36,7 @@ export async function startSession(user, { holdId, reservationId, slotId, vehicl
 }
 
 router.post('/', async (req, res) => {
-  const user = await currentUser(req);
+  const user = requireAccount(await currentUser(req));
   const session = await startSession(user, req.body || {});
   res.status(201).json({ session });
 });

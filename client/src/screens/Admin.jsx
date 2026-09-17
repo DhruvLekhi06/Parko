@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ADMIN_KEY, adminKey } from '../api.js';
 import { useApp, useLiveEvent } from '../store.jsx';
-import { Button, ErrorState, Pill, ScreenHeader, Skeleton, FillBar } from '../components/Primitives.jsx';
+import { Button, ErrorState, Pill, ScreenHeader, Skeleton, FillBar, Toggle } from '../components/Primitives.jsx';
+import { FloorPlan, Legend } from '../components/FloorPlan.jsx';
 import { Icon } from '../components/Icons.jsx';
-import { rupees, clock, dateLabel, TYPE_LABELS, TXN_LABELS, minutes as fmtMinutes } from '../lib/format.js';
+import { rupees, clock, dateLabel, TYPE_LABELS, TXN_LABELS, AMENITY_LABELS, minutes as fmtMinutes } from '../lib/format.js';
 
 const TABS = [
   ['overview', 'Overview'],
   ['venues', 'Venues'],
+  ['floors', 'Floors'],
   ['activity', 'Activity'],
   ['users', 'Users'],
   ['transactions', 'Transactions'],
@@ -55,43 +57,189 @@ function Tile({ k, v, sub, tone }) {
   );
 }
 
-function RateEditor({ venue, onSaved, toast }) {
-  const [r, setR] = useState({ holdFee: venue.rate.holdFee / 100, firstHour: venue.rate.firstHour / 100, perAdditionalHour: venue.rate.perAdditionalHour / 100, dailyCap: venue.rate.dailyCap / 100, freeMinutes: venue.rate.freeMinutes });
+const AMENITY_KEYS = ['ev', 'accessible', 'covered', 'cctv', 'valet', 'restroom', '24x7', 'carwash'];
+
+function VenueEditor({ venue, onSaved, toast }) {
+  const [v, setV] = useState({
+    name: venue.name, address: venue.address || '', opens: venue.opens || '10:00', closes: venue.closes || '23:00', is24h: !!venue.is24h, published: venue.published !== false,
+    amenities: venue.amenities || [],
+    holdFee: venue.rate.holdFee / 100, firstHour: venue.rate.firstHour / 100, perAdditionalHour: venue.rate.perAdditionalHour / 100, dailyCap: venue.rate.dailyCap / 100, freeMinutes: venue.rate.freeMinutes,
+  });
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setR((x) => ({ ...x, [k]: e.target.value }));
+  const set = (k) => (e) => setV((x) => ({ ...x, [k]: e.target.value }));
   const save = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      const out = await api.admin.updateRate(venue.id, {
-        holdFee: Math.round(Number(r.holdFee) * 100), firstHour: Math.round(Number(r.firstHour) * 100), perAdditionalHour: Math.round(Number(r.perAdditionalHour) * 100),
-        dailyCap: Math.round(Number(r.dailyCap) * 100), freeMinutes: Math.round(Number(r.freeMinutes)),
+      const out = await api.admin.updateVenue(venue.id, {
+        name: v.name, address: v.address, opens: v.opens, closes: v.closes, is24h: v.is24h, published: v.published, amenities: v.amenities,
+        rate: {
+          holdFee: Math.round(Number(v.holdFee) * 100), firstHour: Math.round(Number(v.firstHour) * 100), perAdditionalHour: Math.round(Number(v.perAdditionalHour) * 100),
+          dailyCap: Math.round(Number(v.dailyCap) * 100), freeMinutes: Math.round(Number(v.freeMinutes)),
+        },
       });
-      onSaved(out.rate);
-      toast('Rates saved.', { kind: 'success' });
+      onSaved(out);
+      toast('Venue saved.', { kind: 'success' });
     } catch (err) {
       toast(err.message, { kind: 'error' });
     } finally {
       setBusy(false);
     }
   };
-  const F = ({ k, label }) => (
+  const F = ({ k, label, type = 'text', inputMode }) => (
     <label className="rate-field">
       <span>{label}</span>
-      <input className="input" inputMode="decimal" value={r[k]} onChange={set(k)} />
+      <input className="input" type={type} inputMode={inputMode} value={v[k]} onChange={set(k)} />
     </label>
   );
   return (
-    <form className="rate-editor" onSubmit={save}>
-      <F k="holdFee" label="Booking fee ₹" />
-      <F k="firstHour" label="First hour ₹" />
-      <F k="perAdditionalHour" label="Extra hour ₹" />
-      <F k="dailyCap" label="Daily cap ₹" />
-      <F k="freeMinutes" label="Free minutes" />
-      <Button type="submit" variant="primary" size="sm" loading={busy}>
-        Save
-      </Button>
+    <form className="form" onSubmit={save}>
+      <div className="rate-editor">
+        <F k="name" label="Name" />
+        <F k="address" label="Address" />
+        <F k="opens" label="Opens (HH:MM)" />
+        <F k="closes" label="Closes (HH:MM)" />
+      </div>
+      <div className="rate-editor">
+        <F k="holdFee" label="Booking fee ₹" inputMode="decimal" />
+        <F k="firstHour" label="First hour ₹" inputMode="decimal" />
+        <F k="perAdditionalHour" label="Extra hour ₹" inputMode="decimal" />
+        <F k="dailyCap" label="Daily cap ₹" inputMode="decimal" />
+        <F k="freeMinutes" label="Free minutes" inputMode="numeric" />
+      </div>
+      <div className="amenity-picks">
+        {AMENITY_KEYS.map((a) => (
+          <label key={a} className={`chip ${v.amenities.includes(a) ? 'is-active' : ''}`}>
+            <input type="checkbox" checked={v.amenities.includes(a)} onChange={(e) => setV((x) => ({ ...x, amenities: e.target.checked ? [...x.amenities, a] : x.amenities.filter((y) => y !== a) }))} />
+            {AMENITY_LABELS[a] || a}
+          </label>
+        ))}
+      </div>
+      <Toggle id={`v-24h-${venue.id}`} label="Open 24 hours" hint="Ignores opening and closing times" checked={v.is24h} onChange={(c) => setV((x) => ({ ...x, is24h: c }))} />
+      <Toggle id={`v-pub-${venue.id}`} label="Published" hint="Unpublished venues are hidden from drivers" checked={v.published} onChange={(c) => setV((x) => ({ ...x, published: c }))} />
+      <div className="form-actions">
+        <Button type="submit" variant="primary" loading={busy}>
+          Save venue
+        </Button>
+      </div>
     </form>
+  );
+}
+
+function FloorsManager({ venues, toast }) {
+  const [venueId, setVenueId] = useState(venues[0]?.id || '');
+  const [venue, setVenue] = useState(null);
+  const [floorId, setFloorId] = useState('');
+  const [floor, setFloor] = useState(null);
+  const [count, setCount] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!venueId) return undefined;
+    let alive = true;
+    api.venue(venueId).then((d) => {
+      if (!alive) return;
+      const vv = d?.venue ?? d;
+      setVenue(vv);
+      setFloorId((f) => (vv.floors?.some((x) => x.id === f) ? f : vv.floors?.[0]?.id || ''));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [venueId]);
+
+  const loadFloor = useCallback(() => {
+    if (!floorId) return;
+    api.floor(floorId).then((d) => setFloor(d?.floor ?? d)).catch(() => {});
+  }, [floorId]);
+  useEffect(() => {
+    loadFloor();
+  }, [loadFloor]);
+
+  useLiveEvent(
+    (t, d) => {
+      if (t === 'slot' && d.floorId === floorId) setFloor((f) => (f ? { ...f, slots: f.slots.map((s) => (s.id === d.slotId ? { ...s, status: d.status } : s)) } : f));
+    },
+    [floorId]
+  );
+
+  const toggle = async (id) => {
+    const s = floor?.slots.find((x) => x.id === id);
+    if (!s) return;
+    if (s.status === 'reserved') {
+      toast('That slot has an active booking.', { kind: 'warn' });
+      return;
+    }
+    try {
+      await api.admin.setSlot(id, s.status === 'free' ? 'occupied' : 'free');
+    } catch (e) {
+      toast(e.message, { kind: 'error' });
+    }
+  };
+  const bulk = async (body) => {
+    setBusy(true);
+    try {
+      const r = await api.admin.setFloor(floorId, body);
+      toast(`${r.changed} slots updated.`, { kind: 'success' });
+      loadFloor();
+    } catch (e) {
+      toast(e.message, { kind: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const free = floor ? floor.slots.filter((s) => s.status === 'free').length : 0;
+  return (
+    <div>
+      <div className="floors-bar">
+        <select className="input" value={venueId} onChange={(e) => setVenueId(e.target.value)} aria-label="Venue">
+          {venues.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name} ({v.city})
+            </option>
+          ))}
+        </select>
+        <div className="floortabs">
+          {(venue?.floors || []).map((f) => (
+            <button key={f.id} type="button" className={`floortab ${f.id === floorId ? 'is-active' : ''}`} onClick={() => setFloorId(f.id)}>
+              {f.name}
+              <span className="floortab-free num">{f.free ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="floors-actions">
+        <span className="tbl-sub">
+          {floor ? `${free} free of ${floor.slots.length}. Tap a slot to toggle it. Booked slots and parked cars cannot be changed.` : 'Loading floor'}
+        </span>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="secondary" size="sm" onClick={() => bulk({ status: 'free' })} loading={busy}>
+            All free
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => bulk({ status: 'occupied' })} loading={busy}>
+            All occupied
+          </Button>
+          <form
+            className="row"
+            style={{ gap: 6 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (count !== '') bulk({ occupied: Number(count) });
+            }}
+          >
+            <input className="input" style={{ width: 110, minHeight: 36 }} inputMode="numeric" placeholder="Occupied" value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ''))} aria-label="Occupied count" />
+            <Button type="submit" variant="secondary" size="sm" loading={busy}>
+              Set count
+            </Button>
+          </form>
+        </div>
+      </div>
+      <Legend compact />
+      <div className="admin-floor">
+        {floor ? <FloorPlan floor={floor} slots={floor.slots} selectedId={null} onSelectSlot={toggle} mySlotId={null} recommendedId={null} route={null} /> : <Skeleton h={480} r={12} />}
+      </div>
+    </div>
   );
 }
 
@@ -109,8 +257,9 @@ export default function Admin() {
     async (t = tab) => {
       if (!key) return;
       try {
-        const d = await api.admin[t]();
-        setData((x) => ({ ...x, [t]: d }));
+        const name = t === 'floors' ? 'venues' : t;
+        const d = await api.admin[name]();
+        setData((x) => ({ ...x, [name]: d }));
         setError(null);
       } catch (e) {
         if (e.status === 401) {
@@ -248,7 +397,10 @@ export default function Admin() {
               {shownVenues.map((v) => (
                 <tr key={v.id} className={editing === v.id ? 'is-editing' : ''}>
                   <td>
-                    <div className="tbl-name">{v.name}</div>
+                    <div className="tbl-name">
+                      {v.name}
+                      {v.published === false ? <Pill tone="muted"> hidden</Pill> : null}
+                    </div>
                     <div className="tbl-sub">{v.city}</div>
                   </td>
                   <td>{TYPE_LABELS[v.type] || v.type}</td>
@@ -264,7 +416,7 @@ export default function Admin() {
                   <td className="num">{rupees(v.rate.holdFee)}</td>
                   <td>
                     <button type="button" className="linkbtn" onClick={() => setEditing(editing === v.id ? null : v.id)}>
-                      {editing === v.id ? 'Close' : 'Rates'}
+                      {editing === v.id ? 'Close' : 'Edit'}
                     </button>
                   </td>
                 </tr>
@@ -274,18 +426,20 @@ export default function Admin() {
         </div>
         {editing && shownVenues.find((v) => v.id === editing) ? (
           <div className="card card-pad" style={{ marginTop: 12 }}>
-            <div className="section-title">Rates for {shownVenues.find((v) => v.id === editing).name}</div>
-            <RateEditor
+            <div className="section-title">Edit {shownVenues.find((v) => v.id === editing).name}</div>
+            <VenueEditor
               venue={shownVenues.find((v) => v.id === editing)}
               toast={toast}
-              onSaved={(rate) => {
-                setData((x) => ({ ...x, venues: { venues: x.venues.venues.map((v) => (v.id === editing ? { ...v, rate } : v)) } }));
+              onSaved={(out) => {
+                setData((x) => ({ ...x, venues: { venues: x.venues.venues.map((v) => (v.id === editing ? { ...v, ...out } : v)) } }));
               }}
             />
           </div>
         ) : null}
       </>
     );
+  } else if (tab === 'floors') {
+    body = !venues ? <Skeleton h={300} r={12} /> : <FloorsManager venues={venues} toast={toast} />;
   } else if (tab === 'activity') {
     const items = data.activity?.items;
     body = !items ? (

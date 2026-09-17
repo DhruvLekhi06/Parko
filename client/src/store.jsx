@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from './api.js';
+import { api, setToken } from './api.js';
 import { useLiveEvents } from './hooks/useLiveEvents.js';
 import { useGeolocation, metresBetween } from './hooks/useGeolocation.js';
 
@@ -23,6 +23,8 @@ export function AppProvider({ children }) {
   const [serverFee, setServerFee] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [welcomed, setWelcomed] = useState(readWelcomed);
+  const [authOpen, setAuthOpen] = useState(false);
+  const authNext = useRef(null);
   const live = useLiveEvents();
   const position = useGeolocation();
   const holdRef = useRef(null);
@@ -105,6 +107,36 @@ export function AppProvider({ children }) {
     toast(`You're at ${hold.venueName}. Head to ${hold.slotCode} and tap "I've parked".`, { kind: 'success', duration: 7000 });
   }, [arrived, hold, toast]);
 
+  const openAuth = useCallback((next) => {
+    authNext.current = typeof next === 'function' ? next : null;
+    setAuthOpen(true);
+  }, []);
+  const closeAuth = useCallback(() => {
+    authNext.current = null;
+    setAuthOpen(false);
+  }, []);
+  const onAuthed = useCallback(
+    (token, u) => {
+      setToken(token);
+      setUser(u);
+      setAuthOpen(false);
+      refreshActive();
+      const next = authNext.current;
+      authNext.current = null;
+      if (next) window.setTimeout(next, 0);
+    },
+    [refreshActive]
+  );
+  const signOut = useCallback(() => {
+    setToken('');
+    setHold(null);
+    setSession(null);
+    setServerFee(null);
+    refreshUser();
+    refreshActive();
+    toast('Logged out.');
+  }, [refreshUser, refreshActive, toast]);
+
   const finishWelcome = useCallback(() => {
     try {
       window.localStorage.setItem(WELCOME_KEY, '1');
@@ -120,8 +152,9 @@ export function AppProvider({ children }) {
       hold, setHold, session, setSession, serverFee, setServerFee, refreshActive,
       distanceToHoldM, arrived,
       toasts, toast, dismissToast, live, position, welcomed, finishWelcome,
+      authOpen, openAuth, closeAuth, onAuthed, signOut,
     }),
-    [user, userError, refreshUser, setWalletBalance, hold, session, serverFee, refreshActive, distanceToHoldM, arrived, toasts, toast, dismissToast, live, position, welcomed, finishWelcome]
+    [user, userError, refreshUser, setWalletBalance, hold, session, serverFee, refreshActive, distanceToHoldM, arrived, toasts, toast, dismissToast, live, position, welcomed, finishWelcome, authOpen, openAuth, closeAuth, onAuthed, signOut]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

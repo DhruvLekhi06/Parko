@@ -4,6 +4,7 @@ import { useApp } from '../store.jsx';
 import { Link, navigate } from '../router.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
 import { Button, ErrorState, ScreenHeader, Toggle, Pill, IconButton } from '../components/Primitives.jsx';
+import { AuthForm } from '../components/AuthForm.jsx';
 import { WalletSheet } from '../components/WalletSheet.jsx';
 import { InstallBanner } from '../components/InstallBanner.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -173,7 +174,9 @@ function VehicleRow({ v, onEdit, onRemove, onDefault }) {
 
 export default function Profile() {
   const desktop = useDesktop();
-  const { user, setUser, userError, refreshUser, setWalletBalance, toast } = useApp();
+  const { user, setUser, userError, refreshUser, setWalletBalance, toast, onAuthed, signOut } = useApp();
+  const [pw, setPw] = useState(null);
+  const [pwBusy, setPwBusy] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -216,6 +219,74 @@ export default function Profile() {
             <div className="profile-plate">{user?.defaultVehicle?.plate || 'Add your vehicle below'}</div>
           </div>
         </div>
+
+        {user?.isGuest ? (
+          <section className="section card card-pad" aria-label="Account">
+            <div className="section-title">Your account</div>
+            <p className="field-hint" style={{ marginBottom: 12 }}>
+              You're browsing as a guest. Create an account to book slots, park and keep your history on any device.
+            </p>
+            <AuthForm initialName={user?.name || ''} withVehicle={!user?.vehicles?.length} onDone={onAuthed} toast={toast} autoFocus={false} />
+          </section>
+        ) : (
+          <section className="section card card-pad" aria-label="Account">
+            <div className="row-between">
+              <div>
+                <div className="section-title" style={{ margin: 0 }}>
+                  Account
+                </div>
+                <div className="field-hint">{user?.email}</div>
+              </div>
+              <Button variant="secondary" size="sm" onClick={signOut}>
+                Log out
+              </Button>
+            </div>
+            {pw ? (
+              <form
+                className="form"
+                style={{ marginTop: 12 }}
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setPwBusy(true);
+                  try {
+                    await api.auth.password({ current: pw.current, next: pw.next });
+                    toast('Password updated.', { kind: 'success' });
+                    setPw(null);
+                  } catch (err) {
+                    toast(err.message, { kind: 'error' });
+                  } finally {
+                    setPwBusy(false);
+                  }
+                }}
+              >
+                <div className="field">
+                  <label className="field-label" htmlFor="pw-cur">
+                    Current password
+                  </label>
+                  <input id="pw-cur" className="input" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} required />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="pw-new">
+                    New password
+                  </label>
+                  <input id="pw-new" className="input" type="password" autoComplete="new-password" minLength={8} value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} required />
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Button type="button" variant="secondary" onClick={() => setPw(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" block loading={pwBusy}>
+                    Update password
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="linkbtn" style={{ marginTop: 10 }} onClick={() => setPw({ current: '', next: '' })}>
+                Change password
+              </button>
+            )}
+          </section>
+        )}
 
         <section className="walletcard" aria-label="FASTag wallet">
           <div className="walletcard-top">

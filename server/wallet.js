@@ -1,7 +1,7 @@
 import { many, one, run } from './db.js';
 import { newId, ApiError } from './util.js';
 
-export const WELCOME_CREDIT = 50000;
+export const WELCOME_CREDIT = Math.max(0, Number(process.env.WELCOME_CREDIT_PAISE) || 0);
 
 export async function credit(userId, amount, kind, { refType = null, refId = null, note = '' } = {}) {
   const row = await one(`update users set wallet_balance = wallet_balance + $1 where id = $2 returning wallet_balance`, [amount, userId]);

@@ -2,6 +2,9 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export const ROOT = path.join(import.meta.dirname, '..');
+export const PROD = process.env.NODE_ENV === 'production';
+export const SYNTHETIC = process.env.SEED_SYNTHETIC ? process.env.SEED_SYNTHETIC === '1' : !PROD;
+export const SIM_ON = process.env.SIM_ENABLED ? process.env.SIM_ENABLED === '1' : !PROD;
 
 export const nowIso = () => new Date().toISOString();
 export const iso = (d) => (d instanceof Date ? d.toISOString() : d ? new Date(d).toISOString() : null);

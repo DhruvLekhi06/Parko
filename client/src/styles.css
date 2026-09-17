@@ -4286,3 +4286,67 @@ button:focus:not(:focus-visible) {
   color: var(--muted);
 }
 
+/* Auth */
+.authform .seg {
+  margin-bottom: 4px;
+}
+.form-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--red-soft);
+  color: var(--red-ink);
+  font-size: 13.5px;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Operator floors */
+.floors-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.floors-bar select.input {
+  max-width: 380px;
+  min-height: 40px;
+}
+.floors-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 10px;
+}
+.admin-floor {
+  position: relative;
+  height: min(70vh, 640px);
+  margin-top: 8px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+}
+.amenity-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+.amenity-picks input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.amenity-picks .chip {
+  cursor: pointer;
+  position: relative;
+}
+

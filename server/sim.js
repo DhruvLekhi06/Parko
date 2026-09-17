@@ -1,5 +1,5 @@
 import { many, one } from './db.js';
-import { istHour } from './util.js';
+import { istHour, SIM_ON } from './util.js';
 import { targetOccupancy } from './demand.js';
 import { setSlotStatus, expireHolds } from './state.js';
 import { sampleHistory } from './history.js';
@@ -54,7 +54,7 @@ function guarded(fn, label) {
 
 export function startSimulation() {
   guarded(expireHolds, 'expiry')();
-  setInterval(guarded(tick, 'sim'), TICK_MS);
+  if (SIM_ON) setInterval(guarded(tick, 'sim'), TICK_MS);
   setInterval(guarded(expireHolds, 'expiry'), 5000);
   setInterval(guarded(sampleHistory, 'history'), 60000);
 }

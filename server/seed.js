@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { query, tx, migrate, isSeeded, close } from './db.js';
-import { mulberry32, hashStr } from './util.js';
+import { mulberry32, hashStr, SYNTHETIC } from './util.js';
 import { generateFloor } from './layout.js';
 import { synthHistory, insertHistory } from './history.js';
 
@@ -165,9 +165,9 @@ export async function seed({ log = console.log } = {}) {
         [id, name, type, city, address, lat, lng, opens, closes, is24h, JSON.stringify(amenities.split(',')), JSON.stringify(RATES[type]), JSON.stringify(IMAGES[type]), floorNames.length]);
       counts.venues++;
       const total = perFloor * floorNames.length;
-      const history = synthHistory(id, type, total, now);
+      const history = SYNTHETIC ? synthHistory(id, type, total, now) : [];
       const rng = mulberry32(hashStr(id));
-      let freeLeft = history[history.length - 1].free;
+      let freeLeft = SYNTHETIC ? history[history.length - 1].free : total;
       let slotsLeft = total;
       for (const floorName of floorNames) {
         const floorId = `f_${key}_${floorName.toLowerCase()}`;
@@ -185,10 +185,10 @@ export async function seed({ log = console.log } = {}) {
         await insertRows('slots', ['id', 'floor_id', 'code', 'x', 'y', 'w', 'h', 'type', 'status', 'dist_to_entrance', 'updated_at'], rows);
         counts.slots += rows.length;
       }
-      await insertHistory(id, history);
+      if (history.length) await insertHistory(id, history);
     }
   });
-  log(`seeded ${counts.venues} venues, ${counts.floors} floors, ${counts.slots} slots`);
+  log(`seeded ${counts.venues} venues, ${counts.floors} floors, ${counts.slots} slots${SYNTHETIC ? ' (synthetic occupancy)' : ' (all free, operators set occupancy)'}`);
   return counts;
 }
 

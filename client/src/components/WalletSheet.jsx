@@ -3,10 +3,12 @@ import { api } from '../api.js';
 import { rupees } from '../lib/format.js';
 import { Button, Sheet } from './Primitives.jsx';
 import { Icon } from './Icons.jsx';
+import { useApp } from '../store.jsx';
 
 const AMOUNTS = [10000, 20000, 50000, 100000];
 
 export function WalletSheet({ open, onClose, onDone, balance, needed = 0, toast }) {
+  const { user, openAuth } = useApp();
   const [amount, setAmount] = useState(20000);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -17,6 +19,11 @@ export function WalletSheet({ open, onClose, onDone, balance, needed = 0, toast 
   }, [open, needed]);
 
   const topUp = async () => {
+    if (user?.isGuest) {
+      onClose?.();
+      openAuth();
+      return;
+    }
     setBusy(true);
     try {
       const r = await api.topUp(amount);
@@ -50,7 +57,7 @@ export function WalletSheet({ open, onClose, onDone, balance, needed = 0, toast 
         </Button>
       </div>
       <p className="pay-free">
-        <Icon name="info" size={14} /> Demo wallet. A real FASTag recharges through your bank or UPI app.
+        <Icon name="info" size={14} /> Card and UPI payments are coming soon. Until then top-ups are added instantly.
       </p>
     </Sheet>
   );

@@ -16,6 +16,23 @@ export function deviceId() {
 
 export const apiUrl = (path) => `${API_BASE}${path}`;
 
+const TOKEN_KEY = 'spoton.token';
+export const getToken = () => {
+  try {
+    return window.localStorage.getItem(TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+export const setToken = (t) => {
+  try {
+    if (t) window.localStorage.setItem(TOKEN_KEY, t);
+    else window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* private mode */
+  }
+};
+
 function qs(params = {}) {
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
@@ -50,7 +67,7 @@ async function request(path, { method = 'GET', body, admin = false } = {}) {
   try {
     res = await fetch(apiUrl(path), {
       method,
-      headers: { 'X-User-Id': deviceId(), ...(admin ? { 'X-Admin-Key': adminKey() } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { 'X-User-Id': deviceId(), ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}), ...(admin ? { 'X-Admin-Key': adminKey() } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (e) {
@@ -96,6 +113,11 @@ export const api = {
   exitSession: (id) => request(`/api/sessions/${encodeURIComponent(id)}/exit`, { method: 'POST' }),
   sessions: () => request('/api/sessions'),
 
+  auth: {
+    signup: (body) => request('/api/auth/signup', { method: 'POST', body }),
+    login: (body) => request('/api/auth/login', { method: 'POST', body }),
+    password: (body) => request('/api/auth/password', { method: 'POST', body }),
+  },
   me: () => request('/api/users/me').then((d) => d?.user ?? d),
   updateMe: (body) => request('/api/users/me', { method: 'PUT', body }).then((d) => d?.user ?? d),
   addVehicle: (body) => request('/api/vehicles', { method: 'POST', body }),
@@ -112,6 +134,8 @@ export const api = {
     users: () => request('/api/admin/users', { admin: true }),
     transactions: () => request('/api/admin/transactions', { admin: true }),
     updateRate: (id, rate) => request(`/api/admin/venues/${encodeURIComponent(id)}`, { method: 'PUT', body: { rate }, admin: true }),
+    updateVenue: (id, body) => request(`/api/admin/venues/${encodeURIComponent(id)}`, { method: 'PUT', body, admin: true }),
+    setFloor: (id, body) => request(`/api/admin/floors/${encodeURIComponent(id)}`, { method: 'POST', body, admin: true }),
     setSlot: (id, status) => request(`/api/admin/slots/${encodeURIComponent(id)}`, { method: 'POST', body: { status }, admin: true }),
   },
 };

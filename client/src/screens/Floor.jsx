@@ -122,7 +122,7 @@ function FindCard({ session, route, loading, onBack }) {
 
 export default function Floor({ id, query }) {
   const desktop = useDesktop();
-  const { hold: activeHold, setHold, session, setSession, toast, refreshActive, position, user, setWalletBalance } = useApp();
+  const { hold: activeHold, setHold, session, setSession, toast, refreshActive, position, user, setWalletBalance, openAuth } = useApp();
   const [floor, setFloor] = useState(null);
   const [error, setError] = useState(null);
   const [venue, setVenue] = useState(null);
@@ -269,6 +269,10 @@ export default function Floor({ id, query }) {
 
   const parkHere = async () => {
     if (!slot) return;
+    if (user?.isGuest) {
+      openAuth(() => parkHere());
+      return;
+    }
     setBusy('park');
     try {
       const r = await api.startSession({ slotId: slot.id });

@@ -1,5 +1,5 @@
 import { many, query } from './db.js';
-import { istHour, mulberry32, hashStr } from './util.js';
+import { istHour, mulberry32, hashStr, SYNTHETIC } from './util.js';
 import { targetOccupancy } from './demand.js';
 
 export function synthHistory(venueId, type, total, now, anchorFree) {
@@ -36,6 +36,7 @@ export async function insertHistory(venueId, points) {
 }
 
 export async function backfillHistory({ log = console.log } = {}) {
+  if (!SYNTHETIC) return 0;
   const since = new Date(Date.now() - 24 * 3600000).toISOString();
   const rows = await many(`
     select v.id, v.type,

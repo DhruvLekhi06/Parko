@@ -88,6 +88,7 @@ alter table users add column if not exists password_hash text;
 alter table users add column if not exists last_login_at timestamptz;
 create unique index if not exists idx_users_email on users (lower(email)) where email is not null;
 alter table venues add column if not exists published boolean not null default true;
+alter table vehicles add column if not exists issuer text not null default '';
 insert into receipt_seq (id, value) values (1, 0) on conflict do nothing;
 `);
 }

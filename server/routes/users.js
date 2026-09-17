@@ -16,7 +16,7 @@ export const formatPlate = (p) => {
   return m ? [m[1], m[2], m[3], m[4]].filter(Boolean).join(' ') : p;
 };
 
-const formatVehicle = (v) => ({ id: v.id, plate: formatPlate(v.plate), rawPlate: v.plate, label: v.label, kind: v.kind, fastagId: v.fastag_id, fastagLinked: !!v.fastag_id, isDefault: v.is_default });
+const formatVehicle = (v) => ({ id: v.id, plate: formatPlate(v.plate), rawPlate: v.plate, label: v.label, kind: v.kind, fastagId: v.fastag_id, issuer: v.issuer || '', fastagLinked: !!v.fastag_id, isDefault: v.is_default });
 
 async function shape(row) {
   const vehicles = (await many(`select * from vehicles where user_id = $1 order by is_default desc, created_at`, [row.id])).map(formatVehicle);
@@ -178,6 +178,7 @@ function vehicleInput(body, partial = false) {
     if (tag && (tag.length < 10 || tag.length > 24)) throw new ApiError(400, 'VALIDATION', 'A FASTag ID is 10 to 24 letters and digits (it is printed on the tag)');
     out.fastag_id = tag;
   }
+  if (body.issuer !== undefined) out.issuer = String(body.issuer).trim().slice(0, 60);
   if (body.isDefault !== undefined) out.is_default = !!body.isDefault;
   return out;
 }
@@ -191,8 +192,8 @@ vehicles.post('/', async (req, res) => {
   await tx(async () => {
     const makeDefault = v.is_default || user.vehicles.length === 0;
     if (makeDefault) await run(`update vehicles set is_default = false where user_id = $1`, [user.id]);
-    await run(`insert into vehicles (id, user_id, plate, label, kind, fastag_id, is_default) values ($1,$2,$3,$4,$5,$6,$7)`,
-      [id, user.id, v.plate, v.label || '', v.kind || user.prefs.vehicle, v.fastag_id || '', makeDefault]);
+    await run(`insert into vehicles (id, user_id, plate, label, kind, fastag_id, issuer, is_default) values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [id, user.id, v.plate, v.label || '', v.kind || user.prefs.vehicle, v.fastag_id || '', v.issuer || '', makeDefault]);
   });
   res.status(201).json({ user: await currentUser(req), vehicleId: id });
 });
@@ -204,8 +205,8 @@ vehicles.put('/:id', async (req, res) => {
   const v = vehicleInput(req.body || {}, true);
   await tx(async () => {
     if (v.is_default) await run(`update vehicles set is_default = false where user_id = $1`, [user.id]);
-    await run(`update vehicles set plate = $1, label = $2, kind = $3, fastag_id = $4, is_default = $5 where id = $6`,
-      [v.plate ?? existing.plate, v.label ?? existing.label, v.kind ?? existing.kind, v.fastag_id ?? existing.fastag_id, v.is_default ?? existing.is_default, existing.id]);
+    await run(`update vehicles set plate = $1, label = $2, kind = $3, fastag_id = $4, issuer = $5, is_default = $6 where id = $7`,
+      [v.plate ?? existing.plate, v.label ?? existing.label, v.kind ?? existing.kind, v.fastag_id ?? existing.fastag_id, v.issuer ?? existing.issuer, v.is_default ?? existing.is_default, existing.id]);
   });
   res.json({ user: await currentUser(req) });
 });

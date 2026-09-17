@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { rupees, clock, minutes as fmtMinutes, maskTag } from '../lib/format.js';
 import { Button, Sheet } from './Primitives.jsx';
+import { SlideToConfirm } from './SlideToConfirm.jsx';
 import { Icon } from './Icons.jsx';
 import { Ticket } from './HoldCard.jsx';
 import { useApp } from '../store.jsx';
@@ -118,13 +119,13 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
           </div>
           <div style={{ marginTop: 16 }}>
             {step === 'insufficient' ? (
-              <Button variant="primary" size="lg" block icon="plus" onClick={topUpAndBook}>
-                Top up {rupees(topUpAmount)} and book
+              <SlideToConfirm label={`Slide to top up ${rupees(topUpAmount)} and book`} icon="plus" onConfirm={topUpAndBook} />
+            ) : user?.isGuest ? (
+              <Button variant="primary" size="lg" block icon="ticket" onClick={book}>
+                Create an account to book
               </Button>
             ) : (
-              <Button variant="primary" size="lg" block icon="ticket" onClick={book}>
-                Pay {rupees(fee)} and book
-              </Button>
+              <SlideToConfirm label={`Slide to pay ${rupees(fee)} and book`} icon="ticket" onConfirm={book} />
             )}
           </div>
         </>

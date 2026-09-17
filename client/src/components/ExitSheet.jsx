@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { rupees, minutes as fmtMinutes, maskTag } from '../lib/format.js';
 import { Button, Sheet } from './Primitives.jsx';
+import { SlideToConfirm } from './SlideToConfirm.jsx';
 import { Icon } from './Icons.jsx';
 
 export function ExitSheet({ open, session, quote, user, onClose, onExited, onWallet, toast }) {
@@ -101,13 +102,9 @@ export function ExitSheet({ open, session, quote, user, onClose, onExited, onWal
           </div>
           <div style={{ marginTop: 16 }}>
             {step === 'insufficient' ? (
-              <Button variant="primary" size="lg" block onClick={topUpAndExit} icon="plus">
-                Top up {rupees(Math.max(10000, Math.ceil((short?.shortfall || 0) / 10000) * 10000))} and exit
-              </Button>
+              <SlideToConfirm label={`Slide to top up ${rupees(Math.max(10000, Math.ceil((short?.shortfall || 0) / 10000) * 10000))} and exit`} icon="plus" onConfirm={topUpAndExit} />
             ) : (
-              <Button variant="primary" size="lg" block onClick={exit}>
-                {due > 0 ? `Exit and pay ${rupees(due)}` : 'Exit for free'}
-              </Button>
+              <SlideToConfirm label={due > 0 ? `Slide to pay ${rupees(due)} and exit` : 'Slide to exit'} icon="chevron" onConfirm={exit} />
             )}
           </div>
         </>

@@ -11,14 +11,15 @@ import Floor from './screens/Floor.jsx';
 import MyCar from './screens/MyCar.jsx';
 import Profile from './screens/Profile.jsx';
 import Activity from './screens/Activity.jsx';
-import Welcome from './screens/Welcome.jsx';
+import Onboarding, { needsOnboarding } from './screens/Onboarding.jsx';
 import Go from './screens/Go.jsx';
 import Admin from './screens/Admin.jsx';
 import { navigate } from './router.jsx';
 
 function Shell() {
   const route = useRoute();
-  const { welcomed } = useApp();
+  const { user } = useApp();
+  const welcomed = !needsOnboarding(user);
   const mainRef = useRef(null);
   const first = useRef(true);
 
@@ -61,7 +62,7 @@ function Shell() {
       <LivePill />
       <InstallNudge hidden={!welcomed || route.name === 'admin'} />
       <AuthSheet />
-      {!welcomed ? <Welcome /> : null}
+      {!welcomed ? <Onboarding /> : null}
     </div>
   );
 }

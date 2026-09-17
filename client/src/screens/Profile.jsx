@@ -5,6 +5,7 @@ import { Link, navigate } from '../router.jsx';
 import { useDesktop } from '../hooks/useMedia.js';
 import { Button, ErrorState, ScreenHeader, Toggle, Pill, IconButton } from '../components/Primitives.jsx';
 import { AuthForm } from '../components/AuthForm.jsx';
+import { ISSUERS } from '../components/FastagForm.jsx';
 import { WalletSheet } from '../components/WalletSheet.jsx';
 import { InstallBanner } from '../components/InstallBanner.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -74,6 +75,7 @@ export function VehicleForm({ initial, onSaved, onCancel, submitLabel = 'Save ve
   const [label, setLabel] = useState(initial?.label || '');
   const [kind, setKind] = useState(initial?.kind || 'car');
   const [fastagId, setFastagId] = useState(initial?.fastagId || '');
+  const [issuer, setIssuer] = useState(initial?.issuer || '');
   const [busy, setBusy] = useState(false);
   const { toast } = useApp();
 
@@ -81,7 +83,7 @@ export function VehicleForm({ initial, onSaved, onCancel, submitLabel = 'Save ve
     e.preventDefault();
     setBusy(true);
     try {
-      const body = { plate, label, kind, fastagId };
+      const body = { plate, label, kind, fastagId, issuer };
       const r = initial?.id ? await api.updateVehicle(initial.id, body) : await api.addVehicle(body);
       onSaved?.(r?.user ?? r);
     } catch (err) {
@@ -124,6 +126,19 @@ export function VehicleForm({ initial, onSaved, onCancel, submitLabel = 'Save ve
         <input id="v-tag" className="input is-plate" value={fastagId} onChange={(e) => setFastagId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 24))} placeholder="34161FA820328E9A" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         <span className="field-hint">Printed on the tag on your windscreen. Linking it lets you drive out without stopping.</span>
       </div>
+      <div className="field">
+        <label className="field-label" htmlFor="v-issuer">
+          FASTag issued by
+        </label>
+        <select id="v-issuer" className="input" value={issuer} onChange={(e) => setIssuer(e.target.value)}>
+          <option value="">Choose your bank or wallet</option>
+          {ISSUERS.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="form-actions" style={{ display: 'flex', gap: 10 }}>
         {onCancel ? (
           <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
@@ -151,6 +166,7 @@ function VehicleRow({ v, onEdit, onRemove, onDefault }) {
           {v.fastagLinked ? (
             <Pill tone="green" dot>
               FASTag {maskTag(v.fastagId)}
+              {v.issuer ? `, ${v.issuer}` : ''}
             </Pill>
           ) : (
             <button type="button" className="linkbtn" onClick={onEdit}>

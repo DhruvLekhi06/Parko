@@ -23,7 +23,8 @@ SpotOn ("Your spot, sorted."): a smart parking finder for malls and public place
 - `client/` React app
 
 ## Decisions (newest on top)
-- 2026-09-16: UI direction = dark, map-first (Uber/Ola feel), glanceable, rebuilt directly on the live app (Dhruv: "not happy with the UI", picked dark map-first, rebuild directly). Tokens in `:root` are now dark; surfaces over the map are glass (`--glass` + backdrop blur); primary buttons are green with dark text (`--on-green`).
+- 2026-09-17: LIGHT theme is final (Dhruv: "light mode itself, no ai ui, straight hci principle, clean ui"). Tokens: bg #f5f6f8, surface white, ink #111827, primary green #0e8a5f (white text passes AA), amber #d97706 (dark text on amber pins), semantic amber warning banner, no glass/blur/gradients, radius 12/10. Dark tokens are gone; the dark pass survives only as the glanceable layout (stat strip, count-first rows, two-option CTA).
+- 2026-09-16 (superseded 09-17 by light): UI direction = dark, map-first (Uber/Ola feel), glanceable, rebuilt directly on the live app (Dhruv: "not happy with the UI", picked dark map-first, rebuild directly). Tokens in `:root` are now dark; surfaces over the map are glass (`--glass` + backdrop blur); primary buttons are green with dark text (`--on-green`).
 - 2026-09-16: Map tiles = standard OSM tiles with a CSS invert/hue-rotate filter (`.tiles-dark`). CARTO dark basemaps now watermark "API KEY REQUIRED" without a key, so they were dropped.
 - 2026-09-16: Explore map fits user + nearest 4 venues (`fit` prop on VenueMap); My Car shows the OSRM drive route (`route` prop) with a phone-size map above the ticket and the full stage on desktop.
 - 2026-09-16: Phase 2 client: device id in localStorage (`spoton.device`), holds replace reservations, FASTag wallet + vehicles in Profile, ExitSheet auto-debit with top-up-and-retry on 402, WalletSheet, welcome collects plate + FASTag.

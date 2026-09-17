@@ -7,10 +7,7 @@ const isLocal = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
 pg.types.setTypeParser(20, (v) => Number(v));
 pg.types.setTypeParser(1700, (v) => Number(v));
 
-export const pool = new pg.Pool({ connectionString: url, ssl: isLocal ? false : { rejectUnauthorized: false }, max: 8, idleTimeoutMillis: 30000, connectionTimeoutMillis: 20000 });
-pool.on('connect', (client) => {
-  client.query(`set statement_timeout = '600s'`).catch(() => {});
-});
+export const pool = new pg.Pool({ connectionString: url, ssl: isLocal ? false : { rejectUnauthorized: false }, max: 8, idleTimeoutMillis: 30000, connectionTimeoutMillis: 20000, statement_timeout: 600000 });
 pool.on('error', (err) => console.error('pg pool error:', err.message));
 const current = new AsyncLocalStorage();
 
@@ -95,6 +92,29 @@ alter table venues add column if not exists published boolean not null default t
 alter table vehicles add column if not exists issuer text not null default '';
 update venues set rate = '{"freeMinutes":0,"firstHour":5000,"perHalfHour":3000,"dailyCap":60000,"holdFee":2000}'::jsonb where rate ? 'perAdditionalHour' or not (rate ? 'perHalfHour');
 insert into receipt_seq (id, value) values (1, 0) on conflict do nothing;
+create or replace view report_users as
+  select u.name, u.email, u.phone, round(u.wallet_balance / 100.0, 2) as wallet_rupees,
+    (select string_agg(v.plate || case when v.fastag_id <> '' then ' (FASTag ' || v.issuer || ')' else '' end, ', ') from vehicles v where v.user_id = u.id) as vehicles,
+    (u.created_at at time zone 'Asia/Kolkata')::timestamp(0) as signed_up_ist,
+    (u.last_login_at at time zone 'Asia/Kolkata')::timestamp(0) as last_login_ist,
+    u.id as user_id
+  from users u where u.email is not null order by u.created_at desc;
+create or replace view report_transactions as
+  select (t.created_at at time zone 'Asia/Kolkata')::timestamp(0) as time_ist, u.name as user_name, u.email,
+    case t.kind when 'topup' then 'Top-up' when 'hold_fee' then 'Booking fee' when 'parking_fee' then 'Parking fee' when 'refund' then 'Refund' else t.kind end as type,
+    round(t.amount / 100.0, 2) as amount_rupees, round(t.balance_after / 100.0, 2) as wallet_after_rupees, t.note, t.ref_id as reference
+  from transactions t join users u on u.id = t.user_id order by t.created_at desc;
+create or replace view report_bookings as
+  select (h.created_at at time zone 'Asia/Kolkata')::timestamp(0) as booked_ist, u.name as user_name, v.name as venue, f.name as floor, s.code as slot,
+    h.status, round(h.hold_fee / 100.0, 2) as fee_rupees, (h.expires_at at time zone 'Asia/Kolkata')::timestamp(0) as held_until_ist, h.code as gate_code, ve.plate, h.id as booking_id
+  from holds h join users u on u.id = h.user_id join slots s on s.id = h.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id
+  left join vehicles ve on ve.id = h.vehicle_id order by h.created_at desc;
+create or replace view report_parking as
+  select (p.started_at at time zone 'Asia/Kolkata')::timestamp(0) as in_ist, (p.ended_at at time zone 'Asia/Kolkata')::timestamp(0) as out_ist, u.name as user_name, v.name as venue, f.name as floor, s.code as slot,
+    round(extract(epoch from (coalesce(p.ended_at, now()) - p.started_at)) / 60) as minutes, round(p.fee / 100.0, 2) as parking_fee_rupees,
+    round(p.hold_credit / 100.0, 2) as booking_credit_rupees, round((p.fee - p.hold_credit) / 100.0, 2) as paid_rupees, p.payment_method, p.receipt_no, ve.plate, p.id as session_id
+  from sessions p join users u on u.id = p.user_id join slots s on s.id = p.slot_id join floors f on f.id = s.floor_id join venues v on v.id = f.venue_id
+  left join vehicles ve on ve.id = p.vehicle_id order by p.started_at desc;
 `;
   for (const stmt of ddl.split(';\n').map((x) => x.trim()).filter(Boolean)) await query(stmt);
 }

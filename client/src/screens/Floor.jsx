@@ -123,7 +123,7 @@ function FindCard({ session, route, loading, onBack }) {
 
 export default function Floor({ id, query }) {
   const desktop = useDesktop();
-  const { hold: activeHold, setHold, session, setSession, toast, refreshActive, position, user, setWalletBalance, openAuth } = useApp();
+  const { hold: activeHold, setHold, session, setSession, toast, refreshActive, position, user, setWalletBalance, openAuth, live } = useApp();
   const [floor, setFloor] = useState(null);
   const [error, setError] = useState(null);
   const [venue, setVenue] = useState(null);
@@ -170,6 +170,10 @@ export default function Floor({ id, query }) {
   }, [id, reload]);
 
   const venueId = floor?.venue?.id || floor?.venueId;
+  useEffect(() => {
+    live.watch('floor', { floor: id, venues: venueId ? [venueId] : [] });
+    return () => live.watch('floor', null);
+  }, [id, venueId, live]);
   const loadVenue = useCallback(() => {
     if (!venueId) return;
     api

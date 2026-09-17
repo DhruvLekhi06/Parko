@@ -64,7 +64,7 @@ function ListSkeleton() {
 }
 
 export default function Explore() {
-  const { position } = useApp();
+  const { position, live } = useApp();
   const desktop = useDesktop();
   const [q, setQ] = useState('');
   const [type, setType] = useState('all');
@@ -102,6 +102,11 @@ export default function Explore() {
       alive = false;
     };
   }, [position.lat, position.lng, type, ev, acc, dq, reload]);
+
+  useEffect(() => {
+    live.watch('explore', venues ? { venues: venues.slice(0, 80).map((v) => v.id) } : null);
+    return () => live.watch('explore', null);
+  }, [venues, live]);
 
   const firstId = venues?.[0]?.id || null;
   useEffect(() => {

@@ -210,7 +210,11 @@ function Body({ v, alts, hold, session }) {
 
 export default function Venue({ id }) {
   const desktop = useDesktop();
-  const { position, hold, session } = useApp();
+  const { position, hold, session, live } = useApp();
+  useEffect(() => {
+    live.watch('venue', { venues: [id] });
+    return () => live.watch('venue', null);
+  }, [id, live]);
   const [venue, setVenue] = useState(null);
   const [error, setError] = useState(null);
   const [alts, setAlts] = useState(null);

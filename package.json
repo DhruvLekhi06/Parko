@@ -10,7 +10,9 @@
     "dev:client": "vite --config client/vite.config.js --host",
     "build": "vite build --config client/vite.config.js",
     "start": "node --env-file-if-exists=.env server/index.js",
-    "seed": "node --env-file-if-exists=.env server/seed.js --reset"
+    "seed": "node --env-file-if-exists=.env server/seed.js --reset",
+    "migrate": "node --env-file-if-exists=.env server/migrate.js",
+    "import:bengaluru": "node --env-file-if-exists=.env server/import_bengaluru.js"
   },
   "dependencies": {
     "express": "^5.2.1",

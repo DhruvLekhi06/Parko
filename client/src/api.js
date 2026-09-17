@@ -126,6 +126,7 @@ export const api = {
   wallet: () => request('/api/wallet'),
   topUp: (amount) => request('/api/wallet/topup', { method: 'POST', body: { amount } }),
   health: () => request('/api/health'),
+  live: (params) => request(`/api/live${qs(params)}`),
 
   admin: {
     overview: () => request('/api/admin/overview', { admin: true }),

@@ -10,12 +10,15 @@ npm run build && npm start   # production: API serves client/dist on :3001
 
 Docs: `docs/API.md`, `docs/DESIGN.md`, `SUPERPOWER.md`.
 
-## Deploying (free tiers)
+## Deploying (free tiers, no always-on server needed)
 
-1. **Supabase** (Postgres): create a project, copy the connection string (use the "Session" pooler URI on port 5432 or the direct URI).
-2. **Railway** (API): new project from this GitHub repo. Variables: `DATABASE_URL`, `SESSION_SECRET` (long random string), `ADMIN_KEY` (operator portal key), `NODE_ENV=production`, `CORS_ORIGIN=https://<your-vercel-domain>`. Railway runs `npm ci && npm run build` then `npm start`; the API also serves the built client, so Railway alone works too.
-3. **Vercel** (client): import the repo, framework "Other", build `npm run build`, output `client/dist` (already in `vercel.json`). Variable: `VITE_API_URL=https://<your-railway-domain>`.
-4. Open the Vercel URL on a phone: Android shows the install prompt, iOS uses Share, Add to Home Screen.
+1. **Supabase** (Postgres): project created, schema migrated, venues seeded (`npm run migrate`, `npm run seed`, `npm run import:bengaluru` against `DATABASE_URL`).
+2. **Vercel** (client + API as serverless functions): import the repo, framework "Other", build `npm run build`, output `client/dist` (already in `vercel.json`, functions run in Tokyo next to Supabase). Environment variables:
+   - `DATABASE_URL` = the Supabase **transaction pooler** URI (port 6543) with the password
+   - `SESSION_SECRET` = a long random string
+   - `ADMIN_KEY` = the operator portal key
+   - `NODE_ENV=production`, `SIM_ENABLED=0`, `SEED_SYNTHETIC=0`, `WELCOME_CREDIT_PAISE=0`
+3. Open the Vercel URL on a phone: Android shows the install prompt, iOS uses Share, Add to Home Screen.
 
-Production defaults: no occupancy simulation and no synthetic history (`SIM_ENABLED=1` / `SEED_SYNTHETIC=1` re-enable them for demos). Slots seed as free; operators set live occupancy in the portal (Floors tab). Wallet top-ups are instant placeholders until a payment gateway is connected.
+On Vercel the API runs per request: live updates come from polling `/api/live` every 8 s (the event stream is only used by the local server), booking expiry and history sampling run inside requests. `npm run dev` locally still runs the full server with the live stream and timers.
 

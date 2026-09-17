@@ -4783,3 +4783,79 @@ select.input {
   color: var(--muted);
 }
 
+/* Confirm sheet, policy line, foot layout */
+.confirm {
+  text-align: center;
+  padding-top: 4px;
+}
+.confirm-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  display: grid;
+  place-items: center;
+  background: var(--green-soft);
+  color: var(--green-deep);
+}
+.confirm-icon.tone-danger {
+  background: var(--red-soft);
+  color: var(--red-ink);
+}
+.confirm-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.confirm-body {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.policy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.rescard-foot {
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.rescard-policy {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.stats .stat {
+  display: flex;
+  flex-direction: column;
+}
+.stats .stat-sub {
+  margin-top: auto;
+  padding-top: 6px;
+}
+.holdmeta {
+  padding-bottom: 8px;
+}
+@media (max-width: 959px) {
+  .rescard-actions .btn {
+    min-height: 48px;
+  }
+  .sheet {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+

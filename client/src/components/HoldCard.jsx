@@ -89,7 +89,7 @@ export function refundNow(hold, now = Date.now()) {
   return { amount: Math.round((hold.holdFee * p.partialPct) / 100), tier: 'partial' };
 }
 
-export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExtend, onOpenFloor, busy, showRoute = true, distanceM, arrived }) {
+export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExtend, onOpenFloor, busy, showRoute = true, arrived }) {
   const now = useNow(5000, !!hold);
   if (!hold) return null;
   const refund = refundNow(hold, now);
@@ -116,11 +116,6 @@ export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExt
         <span>
           <Icon name="ticket" size={14} /> {rupees(hold.holdFee)} booking, credited at exit
         </span>
-        {distanceM != null ? (
-          <span>
-            <Icon name="navigate" size={14} /> {distance(distanceM)} away
-          </span>
-        ) : null}
       </div>
       <div className="timebar">
         <button type="button" className="timebtn" aria-label="15 minutes less" onClick={() => onExtend?.(-15)} disabled={!!busy || !canCut}>
@@ -150,12 +145,12 @@ export function HoldCard({ hold, route, routeLoading, onCancel, onArrived, onExt
         </Button>
       </div>
       <div className="rescard-foot">
-        <span className="rescard-policy">
-          {refund.tier === 'full' ? `Full refund if you cancel in the next ${Math.max(1, Math.ceil((created + p.fullMinutes * 60000 - now) / 60000))} min` : refund.tier === 'partial' ? `${p.partialPct}% back if you cancel now` : 'No refund this close to the end'}
-        </span>
         <button type="button" className="linkbtn is-danger" onClick={onCancel} disabled={!!busy}>
-          {refund.amount > 0 ? `Cancel, ${rupees(refund.amount)} back` : 'Cancel booking'}
+          {refund.amount > 0 ? `Cancel booking, ${rupees(refund.amount)} back` : 'Cancel booking, no refund'}
         </button>
+        <span className="rescard-policy">
+          {refund.tier === 'full' ? `Full refund for ${Math.max(1, Math.ceil((created + p.fullMinutes * 60000 - now) / 60000))} more min, then ${p.partialPct}%, none in the last ${p.noRefundLastMinutes} min.` : refund.tier === 'partial' ? `${p.partialPct}% back until the last ${p.noRefundLastMinutes} min.` : 'Cancellations in the last 10 min are not refunded.'}
+        </span>
       </div>
     </div>
   );

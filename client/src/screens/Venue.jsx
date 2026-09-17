@@ -74,14 +74,14 @@ function Body({ v, alts, hold, session }) {
           </div>
         </div>
         <div className="stat">
-          <div className="stat-k">Drive</div>
-          <div className="stat-v num">{minutes(v.etaMin)}</div>
-          <div className="stat-sub">{distance(v.distanceM)}</div>
+          <div className="stat-k">Distance</div>
+          <div className="stat-v num">{distance(v.distanceM)}</div>
+          <div className="stat-sub">from you</div>
         </div>
         <div className="stat">
           <div className="stat-k">Hold</div>
           <div className="stat-v num">{rupees(v.holdFee)}</div>
-          <div className="stat-sub">per 15 min, credited</div>
+          <div className="stat-sub">per 15 min</div>
         </div>
       </section>
 
@@ -121,7 +121,7 @@ function Body({ v, alts, hold, session }) {
                       <span className="alt-name">{a.name}</span>
                       <span className="alt-sub">
                         {' '}
-                        {distance(a.distanceM)} away, {minutes(a.etaMin)}
+                        {distance(a.distanceM)} away
                       </span>
                     </span>
                     <span className="alt-free">{a.free} free</span>

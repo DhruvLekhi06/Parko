@@ -9,7 +9,7 @@ import { BottomSheet } from '../components/BottomSheet.jsx';
 import { Icon, TYPE_ICON } from '../components/Icons.jsx';
 import { Brand } from '../components/Nav.jsx';
 import { Chip, Count, FillBar, Skeleton, EmptyState, ErrorState, Button, IconButton } from '../components/Primitives.jsx';
-import { distance, minutes, levelInfo, TYPE_LABELS } from '../lib/format.js';
+import { distance, levelInfo, TYPE_LABELS } from '../lib/format.js';
 
 const TYPES = ['all', 'mall', 'hospital', 'metro', 'rail', 'stadium', 'airport', 'public'];
 const TOP_INSET = 124;
@@ -28,7 +28,7 @@ function VenueItem({ v, selected, onOpen, itemRef }) {
         <span className="vitem-main">
           <span className="vitem-name">{v.name}</span>
           <span className="vitem-meta">
-            {minutes(v.etaMin)} drive, {distance(v.distanceM)}
+            {distance(v.distanceM)} away
             {closed ? ', closed now' : ''}
           </span>
           <FillBar value={occ} tone={lvl.tone} />
@@ -191,7 +191,7 @@ export default function Explore() {
     <div className="row-between">
       <div>
         <div className="sheet-title">{city ? `Near you, ${city}` : 'Near you'}</div>
-        <div className="sheet-sub">{venues ? `${venues.length} places, live counts and drive times` : 'Finding spots'}</div>
+        <div className="sheet-sub">{venues ? `${venues.length} places, live counts` : 'Finding spots'}</div>
       </div>
     </div>
   );

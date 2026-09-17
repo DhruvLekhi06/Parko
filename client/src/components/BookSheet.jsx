@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { rupees, clock, minutes as fmtMinutes, maskTag } from '../lib/format.js';
+import { rupees, clock, maskTag } from '../lib/format.js';
 import { Button, Sheet } from './Primitives.jsx';
 import { SlideToConfirm } from './SlideToConfirm.jsx';
 import { Icon } from './Icons.jsx';
@@ -25,7 +25,6 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
 
   const block = venue?.holdFee ?? 2000;
   const fee = block * (minutes / 15);
-  const eta = venue?.etaMin ?? 0;
   const until = new Date(Date.now() + minutes * 60000).toISOString();
   const tag = user?.defaultVehicle?.fastagId || '';
   const balance = user?.walletBalance ?? 0;
@@ -38,7 +37,7 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
     setStep('processing');
     const wait = new Promise((r) => setTimeout(r, 900));
     try {
-      const [r] = await Promise.all([api.holdSpot({ slotId: slot.id, minutes, etaMinutes: eta, origin: position?.source === 'gps' ? { lat: position.lat, lng: position.lng } : undefined }), wait]);
+      const [r] = await Promise.all([api.holdSpot({ slotId: slot.id, minutes }), wait]);
       setResult(r);
       onWallet?.(r.walletBalance);
       setStep('done');
@@ -95,12 +94,6 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
               <span>Held until</span>
               <span>{clock(until)}</span>
             </div>
-            {eta ? (
-              <div className="receipt-row">
-                <span>Your drive</span>
-                <span className={eta > minutes ? 'tone-text-red' : ''}>{fmtMinutes(eta)}</span>
-              </div>
-            ) : null}
             <div className="receipt-row">
               <span>Booking fee</span>
               <span>{rupees(fee)}</span>
@@ -109,33 +102,21 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
               <span>Credited at exit</span>
               <span>- {rupees(fee)}</span>
             </div>
+            {existingHold ? (
+              <div className="receipt-row">
+                <span>Replaces {existingHold.slotCode}</span>
+                <span className="tone-text-green">{rupees(existingHold.holdFee)} refunded</span>
+              </div>
+            ) : null}
           </div>
-          {eta > minutes ? (
+          {step === 'insufficient' ? (
             <div className="fastag-line is-short">
               <Icon name="alert" size={18} />
-              <span>Your drive is longer than the hold. Pick more time, or add 15 min blocks later from My Car.</span>
-            </div>
-          ) : null}
-          {existingHold ? (
-            <div className="fastag-line">
-              <Icon name="info" size={18} />
               <span>
-                Your booking at {existingHold.venueName} ({existingHold.slotCode}) will be released and its fee refunded.
+                Wallet has {rupees(short?.balance ?? balance)}, you need {rupees(short?.shortfall ?? 0)} more.
               </span>
             </div>
           ) : null}
-          <div className={`fastag-line ${step === 'insufficient' ? 'is-short' : ''}`}>
-            <Icon name={step === 'insufficient' ? 'alert' : 'ticket'} size={18} />
-            <span>
-              {user?.isGuest
-                ? 'You will create an account first, then pay from your wallet.'
-                : step === 'insufficient'
-                ? `Wallet has ${rupees(short?.balance ?? balance)}, you need ${rupees(short?.shortfall ?? 0)} more.`
-                : tag
-                  ? `Paid from FASTag ${maskTag(tag)}, wallet ${rupees(balance)}. Full refund within 5 min of booking, half after that, none in the last 10 min.`
-                  : `Paid from your wallet, ${rupees(balance)}. Full refund within 5 min of booking, half after that, none in the last 10 min.`}
-            </span>
-          </div>
           <div style={{ marginTop: 16 }}>
             {step === 'insufficient' ? (
               <SlideToConfirm label={`Slide to top up ${rupees(topUpAmount)} and book`} icon="plus" onConfirm={topUpAndBook} />
@@ -146,6 +127,10 @@ export function BookSheet({ open, slot, floorName, venue, user, position, existi
             ) : (
               <SlideToConfirm label={`Slide to pay ${rupees(fee)} and book`} icon="ticket" onConfirm={book} />
             )}
+          </div>
+          <div className="policy">
+            <span>{tag ? `FASTag ${maskTag(tag)}, wallet ${rupees(balance)}` : `Wallet ${rupees(balance)}`}</span>
+            <span>Full refund within 5 min, 50% after, none in the last 10 min</span>
           </div>
         </>
       ) : null}

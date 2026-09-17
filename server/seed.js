@@ -4,7 +4,7 @@ import { mulberry32, hashStr, SYNTHETIC } from './util.js';
 import { generateFloor } from './layout.js';
 import { synthHistory, insertHistory } from './history.js';
 
-const RATES = {
+export const RATES = {
   mall: { freeMinutes: 15, firstHour: 4000, perAdditionalHour: 3000, dailyCap: 30000, holdFee: 2000 },
   hospital: { freeMinutes: 30, firstHour: 3000, perAdditionalHour: 2000, dailyCap: 20000, holdFee: 1000 },
   metro: { freeMinutes: 10, firstHour: 2000, perAdditionalHour: 1000, dailyCap: 10000, holdFee: 1000 },
@@ -13,16 +13,16 @@ const RATES = {
   airport: { freeMinutes: 7, firstHour: 12000, perAdditionalHour: 8000, dailyCap: 80000, holdFee: 5000 },
   public: { freeMinutes: 10, firstHour: 2000, perAdditionalHour: 2000, dailyCap: 15000, holdFee: 1000 },
 };
-const HOURS = {
+export const HOURS = {
   mall: ['10:00', '23:00', false], hospital: ['00:00', '23:59', true], metro: ['05:00', '23:30', false], rail: ['00:00', '23:59', true],
   stadium: ['06:00', '22:00', false], airport: ['00:00', '23:59', true], public: ['07:00', '23:00', false],
 };
-const IMAGES = {
+export const IMAGES = {
   mall: { emoji: '🛍️', color: '#0BB57A' }, hospital: { emoji: '🏥', color: '#E5484D' }, metro: { emoji: '🚇', color: '#1C7ED6' },
   rail: { emoji: '🚆', color: '#7048E8' }, stadium: { emoji: '🏟️', color: '#F5A524' }, airport: { emoji: '✈️', color: '#0B1220' },
   public: { emoji: '🅿️', color: '#5B6B7F' },
 };
-const LEVELS = { B3: -3, B2: -2, B1: -1, G: 0, L1: 1, L2: 2, L3: 3 };
+export const LEVELS = { B3: -3, B2: -2, B1: -1, G: 0, L1: 1, L2: 2, L3: 3 };
 const A = {
   mall: 'ev,accessible,covered,cctv,restroom', mallPlus: 'ev,accessible,covered,cctv,valet,restroom,carwash',
   hospital: 'accessible,covered,cctv,24x7,restroom', metro: 'cctv,accessible', rail: 'cctv,24x7,accessible',
@@ -143,7 +143,7 @@ const VENUES = [
   ['v_pun_shivajinagar', 'Shivajinagar Metro (Park & Ride)', 'metro', 'Pune', 'Shivajinagar', 18.531, 73.847, 'G', 50, A.metro],
 ];
 
-async function insertRows(table, columns, rows) {
+export async function insertRows(table, columns, rows) {
   for (let i = 0; i < rows.length; i += 400) {
     const chunk = rows.slice(i, i + 400);
     const params = [];

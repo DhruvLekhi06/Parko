@@ -6,6 +6,7 @@ import { navigate } from '../router.jsx';
 import { FloorPlan, Legend } from '../components/FloorPlan.jsx';
 import { HoldCard, RouteSteps } from '../components/HoldCard.jsx';
 import { BookSheet } from '../components/BookSheet.jsx';
+import { ConfirmSheet } from '../components/ConfirmSheet.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { Button, ErrorState, IconButton, Pill, ScreenHeader, Skeleton } from '../components/Primitives.jsx';
 import { walkMeters, walkTime, reverseSteps, rupees, minutes as fmtMinutes } from '../lib/format.js';
@@ -128,6 +129,7 @@ export default function Floor({ id, query }) {
   const [venue, setVenue] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [booking, setBooking] = useState(null);
+  const [pendingDelta, setPendingDelta] = useState(0);
   const [busy, setBusy] = useState(null);
   const [route, setRoute] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
@@ -326,6 +328,7 @@ export default function Floor({ id, query }) {
 
   const extend = async (delta = 15) => {
     if (!myHold) return;
+    setPendingDelta(0);
     setBusy('extend');
     try {
       const r = await api.extendHold(myHold.id, delta);
@@ -344,7 +347,7 @@ export default function Floor({ id, query }) {
 
   let card = null;
   if (findMode) card = <FindCard session={session} route={route} loading={routeLoading} onBack={() => navigate('/car')} />;
-  else if (myHold) card = <HoldCard hold={myHold} route={route} routeLoading={routeLoading} onCancel={cancel} onArrived={parked} onExtend={extend} busy={busy} />;
+  else if (myHold) card = <HoldCard hold={myHold} route={route} routeLoading={routeLoading} onCancel={cancel} onArrived={parked} onExtend={(d) => setPendingDelta(d)} busy={busy} />;
   else if (slot) card = <SlotCard slot={slot} holdFee={venue?.holdFee ?? 2000} etaMin={venue?.etaMin ?? 30} onHold={() => setBooking(slot)} onParkHere={parkHere} onClose={() => setSelectedId(null)} busy={busy} isBest={slot.id === floor?.recommendedSlotId} parkMode={parkMode} />;
 
   const otherHold =
@@ -361,11 +364,28 @@ export default function Floor({ id, query }) {
     ) : null;
 
   const walletSheet = (
-    <BookSheet
+    <>
+      {myHold ? (
+        <ConfirmSheet
+          open={!!pendingDelta}
+          icon={pendingDelta > 0 ? 'plus' : 'minus'}
+          title={pendingDelta > 0 ? 'Add 15 minutes?' : 'Shorten by 15 minutes?'}
+          body={pendingDelta > 0 ? 'The extra time is charged now and credited back at exit.' : 'The unused time goes straight back to your wallet.'}
+          rows={[
+            ['New end time', new Date(new Date(myHold.expiresAt).getTime() + pendingDelta * 60000).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })],
+            [pendingDelta > 0 ? 'Charged now' : 'Refunded now', rupees(Math.round(myHold.holdFee / Math.max(1, Math.round(myHold.minutes / 15)))), pendingDelta > 0 ? '' : 'is-credit'],
+          ]}
+          confirmLabel={pendingDelta > 0 ? 'Add 15 min' : 'Shorten'}
+          busy={busy === 'extend'}
+          onConfirm={() => extend(pendingDelta)}
+          onClose={() => setPendingDelta(0)}
+        />
+      ) : null}
+      <BookSheet
       open={!!booking}
       slot={booking}
       floorName={floor?.name}
-      venue={venue ? { ...venue, holdFee: venue.holdFee ?? 2000 } : { name: venueName, holdFee: 2000, etaMin: 30 }}
+      venue={venue ? { ...venue, holdFee: venue.holdFee ?? 2000 } : { name: venueName, holdFee: 2000 }}
       user={user}
       position={position}
       existingHold={activeHold && activeHold.slotId !== booking?.id ? activeHold : null}
@@ -374,6 +394,7 @@ export default function Floor({ id, query }) {
       onClose={() => setBooking(null)}
       onBooked={onBooked}
     />
+    </>
   );
 
   const plan = error ? (
@@ -412,14 +433,17 @@ export default function Floor({ id, query }) {
                   <div className="stat">
                     <div className="stat-k">EV free</div>
                     <div className="stat-v num">{counts.ev}</div>
+                    <div className="stat-sub">charging bays</div>
                   </div>
                   <div className="stat">
                     <div className="stat-k">Accessible</div>
                     <div className="stat-v num">{counts.acc}</div>
+                    <div className="stat-sub">wide bays</div>
                   </div>
                   <div className="stat">
                     <div className="stat-k">Booked</div>
                     <div className="stat-v num">{slots.filter((s) => s.status === 'reserved').length}</div>
+                    <div className="stat-sub">on hold now</div>
                   </div>
                 </div>
               ) : null}

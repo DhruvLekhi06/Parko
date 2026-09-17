@@ -7,6 +7,7 @@ import { navigate, Link } from '../router.jsx';
 import { HoldCard } from '../components/HoldCard.jsx';
 import { VenueMap } from '../components/VenueMap.jsx';
 import { ExitSheet } from '../components/ExitSheet.jsx';
+import { ConfirmSheet } from '../components/ConfirmSheet.jsx';
 import { Button, ScreenHeader } from '../components/Primitives.jsx';
 import { LogoMark } from '../components/Logo.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -14,11 +15,12 @@ import { rupees, clock, duration, feeFor, maskTag } from '../lib/format.js';
 
 export default function MyCar() {
   const desktop = useDesktop();
-  const { session, setSession, hold, setHold, serverFee, setServerFee, refreshActive, user, setWalletBalance, toast, distanceToHoldM, arrived, position } = useApp();
+  const { session, setSession, hold, setHold, serverFee, setServerFee, refreshActive, user, setWalletBalance, toast, arrived, position } = useApp();
   const now = useNow(1000, !!session);
   const [exitOpen, setExitOpen] = useState(false);
   const [busy, setBusy] = useState(null);
   const [drive, setDrive] = useState(null);
+  const [pendingDelta, setPendingDelta] = useState(0);
   const posKey = position.source === 'gps' ? `${Math.round(position.lat * 200)},${Math.round(position.lng * 200)}` : 'none';
 
   useEffect(() => {
@@ -96,6 +98,7 @@ export default function MyCar() {
 
   const extend = async (delta = 15) => {
     if (!hold) return;
+    setPendingDelta(0);
     setBusy('extend');
     try {
       const r = await api.extendHold(hold.id, delta);
@@ -210,13 +213,21 @@ export default function MyCar() {
     body = (
       <div className="screen-inner screen-enter">
         {!desktop && mapEl ? <div className="carmap">{mapEl}</div> : null}
-        {drive ? (
-          <div className="drivebar">
-            <span className="drivebar-v num">{Math.max(1, Math.round(drive.seconds / 60))} min</span>
-            <span className="drivebar-k">{(drive.metres / 1000).toFixed(1)} km by road{drive.source === 'estimate' ? ', estimated' : ''}</span>
-          </div>
-        ) : null}
-        <HoldCard hold={hold} showRoute={false} onCancel={cancel} onArrived={parked} onExtend={extend} onOpenFloor={() => navigate(`/floor/${encodeURIComponent(hold.floorId)}`)} busy={busy} distanceM={distanceToHoldM} arrived={arrived} />
+        <HoldCard hold={hold} showRoute={false} onCancel={cancel} onArrived={parked} onExtend={(d) => setPendingDelta(d)} onOpenFloor={() => navigate(`/floor/${encodeURIComponent(hold.floorId)}`)} busy={busy} arrived={arrived} />
+        <ConfirmSheet
+          open={!!pendingDelta}
+          icon={pendingDelta > 0 ? 'plus' : 'minus'}
+          title={pendingDelta > 0 ? 'Add 15 minutes?' : 'Shorten by 15 minutes?'}
+          body={pendingDelta > 0 ? 'The extra time is charged now and credited back at exit.' : 'The unused time goes straight back to your wallet.'}
+          rows={[
+            ['New end time', clock(new Date(new Date(hold.expiresAt).getTime() + pendingDelta * 60000).toISOString())],
+            [pendingDelta > 0 ? 'Charged now' : 'Refunded now', rupees(Math.round(hold.holdFee / Math.max(1, Math.round(hold.minutes / 15)))), pendingDelta > 0 ? '' : 'is-credit'],
+          ]}
+          confirmLabel={pendingDelta > 0 ? 'Add 15 min' : 'Shorten'}
+          busy={busy === 'extend'}
+          onConfirm={() => extend(pendingDelta)}
+          onClose={() => setPendingDelta(0)}
+        />
         <p className="feenote">{arrived ? 'You have arrived. Park in your spot, then tap "I\'ve parked" to start the timer.' : 'Show the code at the gate, park in your spot, then tap "I\'ve parked".'}</p>
       </div>
     );
